@@ -1,0 +1,57 @@
+{
+  "type": "object",
+  "properties": {
+    "controlchannel": {
+      "title": "Control channel",
+      "type": "string",
+      "default": "notification:notifications.switchlogic.control"
+    },
+    "switchbanks" : {
+      "title": "Switch banks",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": [ "instance", "channels" ],
+        "properties": {
+          "instance": {
+            "title": "Instance",
+            "type": "string",
+            "default": ""
+          },
+          "type": {
+            "title": "Switchbank type",
+            "type": "string",
+            "enum": [ "switch", "relay" ],
+            "default": "relay"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string",
+            "default": ""
+          },
+          "channels": {
+            "title": "Channels",
+            "type": "array",
+            "default": [],
+            "items": {
+              "type": "object",
+              "required": [ "index" ],
+              "properties": {
+                "index": {
+                  "title": "Index",
+                  "type": "number"
+                },
+                "description": {
+                  "title": "Description",
+                  "type": "string",
+                  "default": ""
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
