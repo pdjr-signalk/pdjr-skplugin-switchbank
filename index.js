@@ -30,9 +30,9 @@ module.exports = function(app) {
   var unsubscribes = [];
   var switchbanks = {};
 
-  plugin.id = "nmearelay";
-  plugin.name = "NMEA relay plugin";
-  plugin.description = "Operate NMEA 2000 relay output modules.";
+  plugin.id = "switchbank";
+  plugin.name = "Switch bank interface";
+  plugin.description = "NMEA 2000 switch bank interface.";
 
   const log = new Log(plugin.id, { ncallback: app.setProviderStatus, ecallback: app.setProviderError });
   const debug = new DebugLog(plugin.id, DEBUG_KEYS);

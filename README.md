@@ -1,6 +1,6 @@
-# signalk-nmearelay
+# signalk-switchbank
 
-Operate NMEA 2000 relay output modules.
+NMEA 2000 switch bank interface.
 
 This project implements a plugin for the
 [Signal K Node server](https://github.com/SignalK/signalk-server-node).
@@ -8,56 +8,95 @@ This project implements a plugin for the
 Reading the [Alarm, alert and notification handling](http://signalk.org/specification/1.0.0/doc/notifications.html)
 section of the Signal K documentation may provide helpful orientation.
 
-__signalk-nmearelay__ provides an interface for NMEA 2000 compliant
-switchbank relay modules which can be operated by PGN127502 Switch Bank
-Control messages.
+__signalk-switchbank__ provides an interface for multi-channel switch
+and relay modules which use the NMEA 2000 Switch Bank protocols
+based on PGN 127501 (Switch Bank Status) and  PGN 127502 (Switch Bank
+Control) messages.
 
-The plugin listens on a control channel for messages which command
-a state change on a relay channel and immediately implements the
-requested change by issuing a PGN 127502 Switch Bank Update message
-over the NMEA bus.
+PGN 127501 messages are handled natively by Signal K which implements
+paths under "electrical.switches.bank...." which report the state of
+every switch bank channel detected on the host NMEA bus.
 
-The control channel monitored by __signalk-nmearelay__ can be a Signal
-K notification channel, a Unix domain FIFO or a dbus channel. The
-plugin easily interfaces to
-[signalk-switchlogic](https://github.com/preeve9534/signalk-switchlogic)
-and this combination allows arbitrarily complex switch control logic to
-operate NMEA relay outputs.
+__signalk-switchbank__ extends this native support in two ways by
+providing mechanisms for:
 
-The plugin can also be used to elaborate paths in the
-"electrical.switches.bank..." tree with meta-data which, *inter-alia*,
-can allow consumers of switchbank data to present information in a more
+1. decorating the switch bank paths built by Signal K with meta data
+   derived from a configuration file;
+
+2. operating relay modules by issuing PGN 127502 messages in response
+   to commands received on a control channel (Signal K notification
+   path, Unix FIFO/named pipe or host system D-Bus).
+
+## Overview
+
+The __signalk-switchbank__ configuration file contains a collection of
+entries which define and describe the NMEA 2000 switch and relay banks
+that are under its purview and uses this data in the following ways.
+
+### Adding meta information to switch bank paths
+
+__signalk-switchbank__ begins execution by recovering descriptive data
+from its configuration file and writing it as meta value delta updates
+to each of the Signal K switch channel paths under
+"electrical.switches.bank...".
+
+The usefulness of this meta information is documentary, allowing
+consumers of switch bank data to present information in a more
 accessible way.
+For example, the
 [signalk-switch-monitor](https://github.com/preeve9534/signalk-switch-monitor)
-is an example of an application which does this.
+plugin uses this meta-data to build a switch bank status display.
 
+### Operating NMEA 2000 switch bank relays 
+
+__signalk-switchbank__ attaches to a *control channel* specified in its
+configuration file and listens for string-encode JSON commands of the
+form:
+```
+{
+  "moduleid": "*moduleid*",    // relay module instance number
+  "channelid": "*channelid*",  // relay channel index number
+  "state": "*state*"           // "0" or "1" (for OFF/ON)
+}
+```
+
+When the control channel is a notification path, then the JSON command
+string is taken to be the value of the notification's description
+property.
+
+The plugin parses the command string, checks its validity, verifies
+that the specified *moduleid* matches the instance number of a
+configured switch bank relay module and that *channelid* matches a
+configured channel and promptly issues a PGN 127502 NMEA message to
+update the state of the specified remote device.
+
+The plugin
+[signalk-switchlogic](https://github.com/preeve9534/signalk-switchlogic)
+can be used to generate commands of the form consumed by
+__signalk-switchbank__ and the use of these plugins together enables
+simple and complex switching rules to directly operate NMEA 2000
+relays. 
+ 
 ## System requirements
 
-__signalk-nmearelay__ has no special installation requirements.
+__signalk-switchbank__ has no special installation requirements.
 
 Relay switchbank modules which are to be operated by the plugin must
 respond to NMEA 2000 PGN 127502 (Switch Bank Update).
 
 ## Installation
 
-Download and install __signalk-nmearelay__ using the "Appstore" menu
+Download and install __signalk-switchbank__ using the "Appstore" menu
 option in your Signal K Node server console.
 The plugin can also be obtained from the 
-[project homepage](https://github.com/preeve9534/signalk-nmearelay)
+[project homepage](https://github.com/preeve9534/signalk-switchbank)
 and installed using
 [these instructions](https://github.com/SignalK/signalk-server-node/blob/master/SERVERPLUGINS.md).
 
-## Using the plugin
+## Configuration
 
-__signalk-nmearelay__ autonomously reacts to the commands it receives,
-but before use it must be configured to suit your needs.
-The plugin can be configured using the Signal K Node server plugin
-configuration GUI, but this rather limited interface gets in the way
-of an otherwise straightforward task: it is simpler to directly edit
-the plugin's JSON configuration file using your preferred text editor.
- 
-The plugins looks for the configuration file 'nmearelay.json' in the
-server's 'plugin-config-data/' directory.
+__signalk-switchbank__ looks for the configuration file
+'switchbank.json' in the server's 'plugin-config-data/' directory.
 This file must have the following general structure:
 ```
 {
@@ -75,32 +114,21 @@ This file must have the following general structure:
 The __controlchannel__ property value introduces a configuration string
 which sets up the channel on which the plugin will listen for relay
 operating commands.
-The configurations string must consist of two, colon-delimited, fields:
+The configurations string must consist of two, colon-delimited, fields
+"*channel-type*__:__*channel-id*" with the following value constraints.
 
-    "*channel-type*__:__*channel-id*"
+| *channel-type*   | *channel-id*                                               |
+|:-----------------|:-----------------------------------------------------------|
+| __notification__ | A path in the Signal K "notifications...." tree.           |
+| __fifo__         | The pathname of a named pipe in the host operating system. |
+| __dbus__         | The name of D-Bus channel in the host operating system.    |
 
-There are three valid *channel-type* options.
+The property value defaults to "notification:notifications.switchlogic.command".
 
-1. notification - listen on a Signal K notification path. This is the
-   simplest option, requiring no operating system configuration and is
-   the preferred choice because it directly interfaces with the
-   commands issued by __signalk-switchlogic__. In this scheme,
-   *channel-id* identifies a Signal K notification path on which the
-   plugin should listen. 
-
-2. Listen on a Unix domain FIFO. Not yet implemented.
-
-3. Listen on a dbus channel. Not yet implemented.
-
- 
 The __switchbanks__ array is used to define the NMEA 2000 switchbanks
 which are of interest to the plugin.
-Amongst other things, these definitions are used to inject meta paths 
-into the Signal K "electrical.switches...." tree, elaborating the basic
-state information which is automatically maintained by Signal K.
 
-A single entry in the __switchbanks__ array defines a single
-switchbank.
+Each entry in the __switchbanks__ array defines a single switchbank.
 Here's an example drawn from my configuration file:
 ```
       {
@@ -139,33 +167,12 @@ index of zero - for some reason, the Signal K convention in path names
 is to start counting channels from 1: don't do that let the plugin work
 it out).
 
-## Command format
-
-__signalk-nmearelay__ expects to receive JSON commands as a text string
-of the sort generated by JSON.stringify().
-Parsing a command string should yield an object of the form:
-```
-{
-  "moduleid": "*moduleid*",    // relay module instance number
-  "channelid": "*channelid*",  // relay channel index number
-  "state": "*state*"           // "0" or "1" (for OFF/ON)
-}
-```
-
-When the command channel is of the "notification" type, then the
-command string is assumed to be the value of the notification's
-description property.
-
 ## Debugging and logging
-
-__signalk-nmearelay__ uses the standard Signal K logging mechanism
-based around the idea of debug keys (you can access the relevant GUI
-from your server console menu Server -> Server Log).
 
 The plugin understands the following debug keys.
 
-| Key | Meaning                                                                                                                    |
-|:-------------------|:------------------------------------------------------------------------------------------------------------|
-| nmearelay:\*       | Enable all keys.                                                                                            |
-| nmearelay:state    | Log all received PGN 127501 Switch Bank Status messages.                                                    |
-| nmearelay:commands | Log all commands received and issued by the plugin.                                                         |
+| Key                 | Meaning                                                  |
+|:--------------------|:---------------------------------------------------------|
+| switchbank:\*       | Enable all keys.                                         |
+| switchbank:state    | Log all received PGN 127501 Switch Bank Status messages. |
+| switchbank:commands | Log all commands received and issued by the plugin.      |
