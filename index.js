@@ -73,14 +73,16 @@ module.exports = function(app) {
 
     options.switchbanks.filter(sb => (sb.type == "relay")).forEach(switchbank => {
       let instance = switchbank.instance; 
-      debug.N("state", "creating state model for switchbank %s (%d channels)", instance, switchbank.channels.length); 
-      switchbanks[instance] = (new Array(switchbank.channels.length)).fill(undefined);
+      var maxindex = switchbank.channels.reduce((a,c) => ((c.index > a)?c.index:a), 0);
+      debug.N("state", "creating relay state model for switchbank %d (%d channels)", instance, (maxindex + 1)); 
+      switchbanks[instance] = (new Array(maxindex + 1)).fill(undefined);
       for (var i = 0; i < switchbank.channels.length; i++) {
         let channel = switchbank.channels[i].index;
         let stream = app.streambundle.getSelfStream("electrical.switches.bank." + instance + "." + (channel + 1) + ".state");
+        let description = switchbank.channels[i].description;
         if (stream) stream.skipDuplicates().onValue(v => {
           switchbanks[instance][channel] = v;
-          debug.N("state", "updating state model [" + instance + "," + channel + "] = " + v);
+          debug.N("state", "updating relay state model [%d,%d] = %d (%s)", instance, channel, v, description);
         });
       }
     });
