@@ -13,8 +13,8 @@ and relay modules which operate using the NMEA 2000 Switch Bank
 protocol implemented by PGN 127501 (Switch Bank Status) and  PGN 127502
 (Switch Bank Control).
 
-PGN 127501 messages are processed natively by Signal K which uses them
-to maintain paths under "electrical.switches.bank....".
+PGN 127501 messages are processed natively by Signal K into paths under
+"electrical.switches.bank....".
 These paths are updated in real time to report the state of every
 switch bank channel detected on the host NMEA bus.
 

@@ -34,7 +34,7 @@ module.exports = function(app) {
   plugin.name = "Switch bank interface";
   plugin.description = "NMEA 2000 switch bank interface.";
 
-  const log = new Log(plugin.id, { ncallback: app.setProviderStatus, ecallback: app.setProviderError });
+  const log = new Log(plugin.id, { ncallback: app.setPluginStatus, ecallback: app.setPluginError });
   const debug = new DebugLog(plugin.id, DEBUG_KEYS);
 
   plugin.schema = function() {
