@@ -26,8 +26,8 @@ file.
 
 Secondly, by providing a means of operating switch bank relay modules
 in response to commands received on a control channel.
-The control channel can be a Signal K notification path, a Unix domain
-socket (IPC) or a host system D-Bus channel.
+The control channel can be a Signal K notification path or a Unix domain
+socket (IPC).
 The plugin operates remote switch bank relays by transmitting PGN 127502
 messages on the host NMEA bus.
 
@@ -126,7 +126,6 @@ The configurations string must consist of two, colon-delimited, fields
 |:-----------------|:-----------------------------------------------------------|
 | __notification__ | A path in the Signal K "notifications...." tree.           |
 | __ipc__          | The pathname of a Unix domain socket.                      |
-| __dbus__         | The name of D-Bus channel in the host operating system.    |
 
 The property value defaults to "notification:notifications.switchlogic.command".
 
@@ -185,3 +184,8 @@ The plugin understands the following debug keys.
 | switchbank:\*       | Enable all keys.                                |
 | switchbank:state    | Log changes to the plugin's relay state model.  |
 | switchbank:commands | Log commands received and issued by the plugin. |
+
+## Author
+
+Paul Reeve <preeve@pdjr.eu>\
+October 2020
