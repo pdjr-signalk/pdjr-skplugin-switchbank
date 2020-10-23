@@ -57,7 +57,7 @@ module.exports = function(app) {
      * specified switch channel paths.
      */
 
-    var flattenedChannels = options.switchbanks.reduce((a,sb) => a.concat(sb.channels.map(ch => { return({"instance": sb.instance, "index": (ch.index + 1), "type": sb.type, "description": ch.description })})), []);
+    var flattenedChannels = options.switchbanks.reduce((a,sb) => a.concat(sb.channels.map(ch => { return({"instance": sb.instance, "index": ch.index, "type": sb.type, "description": ch.description })})), []);
     var deltas = flattenedChannels.map(c => ({
       "path": "electrical.switches.bank." + c.instance + "." + c.index + ".meta",
       "value": { "name": c.description, "type": c.type }
@@ -75,14 +75,14 @@ module.exports = function(app) {
       let instance = switchbank.instance; 
       var maxindex = switchbank.channels.reduce((a,c) => ((c.index > a)?c.index:a), 0);
       debug.N("state", "creating relay state model for switchbank %d (%d channels)", instance, (maxindex + 1)); 
-      switchbanks[instance] = (new Array(maxindex + 1)).fill(undefined);
+      switchbanks[instance] = (new Array(maxindex)).fill(undefined);
       for (var i = 0; i < switchbank.channels.length; i++) {
         let channel = switchbank.channels[i].index;
-        let stream = app.streambundle.getSelfStream("electrical.switches.bank." + instance + "." + (channel + 1) + ".state");
+        let stream = app.streambundle.getSelfStream("electrical.switches.bank." + instance + "." + channel + ".state");
         let description = switchbank.channels[i].description;
         if (stream) stream.skipDuplicates().onValue(v => {
-          switchbanks[instance][channel] = v;
-          debug.N("state", "updating relay state model [%d,%d] = %d (%s)", instance, channel, v, description);
+          switchbanks[instance][channel - 1] = v;
+          debug.N("state", "updating relay state model [%d,%d] = %d (%s)", instance, (channel - 1), v, description);
         });
       }
     });
@@ -107,7 +107,7 @@ module.exports = function(app) {
               if (switchbanks[moduleid] !== undefined) {
                 debug.N("commands", "received command %s", JSON.stringify(command));
                 var buffer = Array.from(switchbanks[moduleid]).map(v => (v === undefined)?0:v);
-                buffer[channelid] = ((state)?1:0);
+                buffer[channelid - 1] = ((state)?1:0);
                 message = Nmea2000.makeMessagePGN127502(moduleid, buffer);
                 app.emit('nmea2000out', message);
                 debug.N("commands", "transmitted NMEA message '%s'", message);

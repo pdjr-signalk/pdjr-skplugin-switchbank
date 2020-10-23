@@ -26,8 +26,8 @@ file.
 
 Secondly, by providing a means of operating switch bank relay modules
 in response to commands received on a control channel.
-The control channel can be a Signal K notification path, a Unix domain
-socket (IPC) or a host system D-Bus channel.
+The control channel can be either a Signal K notification path or a
+Unix domain socket (IPC).
 The plugin operates remote switch bank relays by transmitting PGN 127502
 messages on the host NMEA bus.
 
@@ -53,28 +53,39 @@ plugin uses this meta-data to build a switch bank status display.
 
 ### Operating NMEA 2000 switch bank relays 
 
-__signalk-switchbank__ attaches to a *control channel* specified in its
-configuration file and listens for string-encode JSON commands of the
-form:
+__signalk-switchbank__ attaches to the control channel specified in its
+configuration file and listens for incoming commands.
+
+If the control channel is a notification path, then incoming
+notifications will have the form:
+```
+{
+  "description": "*command*",
+  "state": "normal",
+  "method": []
+}
+```
+
+Where *command" is a string encoded JSON object of the form: 
 ```
 {
   "moduleid": "*moduleid*",    // relay module instance number
   "channelid": "*channelid*",  // relay channel index number
-  "state": "*state*"           // "0" or "1" (for OFF/ON)
+  "state": *state*           // "0" or "1" (for OFF/ON)
 }
 ```
 
-When the control channel is a notification path, then the JSON command
-string is taken to be the value of the notification's description
-property.
+When the control channel is an IPC notification path, then command
+strings will be presented without the notification wrapper.
 
 The plugin parses the command string, checks its validity, verifies
-that the specified *moduleid* and *channelid* identify a configured
-relay switchbank, and promptly issues a PGN 127502 NMEA message to
-update the state of the specified remote module.
+that the specified *moduleid* and *channelid* identify a relay
+switchbank that is defined in the plugin configuration file and then 
+promptly issues a PGN 127502 NMEA message to update the state of the
+specified remote device.
 
 The plugin
-[signalk-switchlogic](https://github.com/preeve9534/signalk-switchlogic)
+[signalk-switchlogic](https://github.com/preeve9534/signalk-switchlogic#readme)
 can be used to generate commands of the form consumed by
 __signalk-switchbank__ and the use of these plugins together enables
 simple and complex switching rules to directly operate NMEA 2000
@@ -85,7 +96,7 @@ relays.
 __signalk-switchbank__ has no special installation requirements.
 
 Relay switchbank modules which are to be operated by the plugin must
-respond to NMEA 2000 PGN 127502 (Switch Bank Update).
+respond to NMEA 2000 PGN 127502 (Switch Bank Update) messages.
 
 ## Installation
 
@@ -141,14 +152,14 @@ Here's an example drawn from my configuration file:
         "type": "relay",
         "description": "Engine room relay module #210-3452",
         "channels": [
-          { "index": 0, "description": "Immersion heater 1kW" },
-          { "index": 1, "description": "Immersion heater 2kW" },
-          { "index": 2, "description": "Hydrophore" },
-          { "index": 3, "description": "Boiler" },
-          { "index": 4, "description": "Chiller" },
-          { "index": 5, "description": "Thermal store" },
-          { "index": 6, "description": "(unused)" },
-          { "index": 7, "description": "(unused)" }
+          { "index": 1, "description": "Immersion heater 1kW" },
+          { "index": 2, "description": "Immersion heater 2kW" },
+          { "index": 3, "description": "Hydrophore" },
+          { "index": 4, "description": "Boiler" },
+          { "index": 5, "description": "Chiller" },
+          { "index": 6, "description": "Thermal store" },
+          { "index": 7, "description": "(unused)" },
+          { "index": 8, "description": "(unused)" }
         ]
       }
 ```
@@ -172,9 +183,8 @@ These descriptions are used by the plugin to issue delta updates which
 insert channel meta keys into the Signal K tree.
 
 Finally, __index__ property values are used to uniquely identify each
-channel within a switchbank (note that the first channel should have an
-index of zero (the plugin will map the supplied values to the 1-based
-indexing used in Signal K path names).
+channel within a switchbank (note that is Signal K style, the first
+channel should have an index of one not zero).
 
 ## Debugging and logging
 
