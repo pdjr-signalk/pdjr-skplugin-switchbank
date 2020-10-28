@@ -18,18 +18,12 @@ PGN 127501 messages are processed natively by Signal K into paths under
 These paths are updated in real time to report the state of every
 switch bank channel detected on the host NMEA bus.
 
-__signalk-switchbank__ extends this native support in two ways.
-
-Firstly, by providing a mechanism for decorating the switch bank paths
-built by Signal K with meta data derived from the plugin configuration
-file.
-
-Secondly, by providing a means of operating switch bank relay modules
-in response to commands received on a control channel.
-The control channel can be either a Signal K notification path or a
-Unix domain socket (IPC).
-The plugin operates remote switch bank relays by transmitting PGN 127502
-messages on the host NMEA bus.
+__signalk-switchbank__ extends this native support by providing a
+mechanism for decorating the switch bank paths built by Signal K with
+meta data derived from the plugin configuration file.
+Additionally (maybe more importantly) it provides a means of operating
+switch bank relay modules in response to updates in Signal K's
+'electrical.switches....' tree.
 
 ## Overview
 
@@ -41,8 +35,7 @@ contains a collection of switchbank definitions which describe the NMEA
 
 __signalk-switchbank__ begins execution by collating descriptive data
 for each defined switchbank channel and writing this as a single delta
-update of the Signal K switch channel paths under
-"electrical.switches.bank...".
+update of the Signal K paths under "electrical.switches.bank...".
 
 The usefulness of this meta information is documentary, allowing
 consumers of switch bank data to present information in a more
@@ -53,20 +46,11 @@ plugin uses this meta-data to build a switch bank status display.
 
 ### Operating NMEA 2000 switch bank relays 
 
-__signalk-switchbank__ attaches to the control channel specified in its
-configuration file and listens for incoming commands.
+__signalk-switchbank__ attaches to the switch paths of relay
+modules specified in its configuration file and listens for
+updates on the 'control' key.
 
-If the control channel is a notification path, then incoming
-notifications will have the form:
-```
-{
-  "description": "*command*",
-  "state": "normal",
-  "method": []
-}
-```
-
-Where *command" is a string encoded JSON object of the form: 
+The value of the control key will be a JSON object of the form: 
 ```
 {
   "moduleid": "*moduleid*",    // relay module instance number
@@ -75,12 +59,8 @@ Where *command" is a string encoded JSON object of the form:
 }
 ```
 
-When the control channel is an IPC notification path, then command
-strings will be presented without the notification wrapper.
-
-The plugin parses the command string, checks its validity, verifies
-that the specified *moduleid* and *channelid* identify a relay
-switchbank that is defined in the plugin configuration file and then 
+If *moduleid* and *channelid* identify a relay switchbank channel
+that is defined in the plugin configuration file then the plugin 
 promptly issues a PGN 127502 NMEA message to update the state of the
 specified remote device.
 

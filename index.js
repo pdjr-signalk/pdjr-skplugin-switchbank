@@ -48,7 +48,7 @@ module.exports = function(app) {
   }
 
   plugin.start = function(options) {
-    log.N("listening on control channel %s", options.controlchannel);
+    log.N("operating %d switch banks (%d relay banks)", options.switchbanks.length, options.switchbanks.filter(sb => (sb.type == "relay")).length);
     debug.N("*", "available debug tokens: %s", debug.getKeys().join(", "));
 
     /******************************************************************
@@ -87,39 +87,20 @@ module.exports = function(app) {
       }
     });
 
-    /******************************************************************
-     * And finally, we just wait for commands to appear on the command
-     * channel and, if they specify one of our relay output modules,
-     * then we issue an appropriate PGN 127502.
-     */
-
-    var controlchannel = options.controlchannel.split(':');
-    switch (controlchannel[0]) {
-      case "notification":
-        var stream = app.streambundle.getSelfStream(controlchannel[1]).skipDuplicates();
-        if (stream) {
-          unsubscribes.push(stream.onValue(v => {
-            var command = (v.description)?JSON.parse(v.description):{};
-            var moduleid = (command.moduleid !== undefined)?command.moduleid:null;
-            var channelid = (command.channelid !== undefined)?parseInt(command.channelid):null;
-            var state = (command.state !== undefined)?parseInt(command.state):null;
-            if ((moduleid !== null) && (channelid !== null) && (state !== null)) {
-              if (switchbanks[moduleid] !== undefined) {
-                debug.N("commands", "received command %s", JSON.stringify(command));
-                var buffer = Array.from(switchbanks[moduleid]).map(v => (v === undefined)?0:v);
-                buffer[channelid - 1] = ((state)?1:0);
-                message = Nmea2000.makeMessagePGN127502(moduleid, buffer);
-                app.emit('nmea2000out', message);
-                debug.N("commands", "transmitted NMEA message '%s'", message);
-              }
-            }
-          }));
-        } else {
-          log.N("unable to attach to command channel (%s)", options.commandchannel);
-        }
-      default:
-        break;
-    }
+    var controlPaths = options.switchbanks.filter(sb => (sb.type == "relay")).reduce((a,sb) => a.concat(sb.channels.map(ch => "electrical.switches.bank." + sb.instance + "." + ch.index + ".control")), []);
+    console.log(controlPaths);
+    var controlStreams = controlPaths.map(path => app.streambundle.getSelfStream(path).skipDuplicates());
+    var controlStream = bacon.mergeAll(controlStreams);
+    unsubscribes.push(controlStream.onValue(v => {
+      if (switchbanks[v.moduleid] !== undefined) {
+        debug.N("commands", "received command %o", v);
+        var buffer = Array.from(switchbanks[v.moduleid]).map(v => (v === undefined)?0:v);
+        buffer[v.channelid - 1] = ((v.state)?1:0);
+        message = Nmea2000.makeMessagePGN127502(v.moduleid, buffer);
+        app.emit('nmea2000out', message);
+        debug.N("commands", "transmitted NMEA message '%s'", message);
+      }
+    }));
   }
 
   plugin.stop = function() {
