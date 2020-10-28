@@ -8,8 +8,8 @@ This project implements a plugin for the
 Reading the [Alarm, alert and notification handling](http://signalk.org/specification/1.0.0/doc/notifications.html)
 section of the Signal K documentation may provide helpful orientation.
 
-__signalk-switchbank__ provides an interface for multi-channel switch
-and relay modules which operate using the NMEA 2000 Switch Bank
+__signalk-switchbank__ implements a control interface for multi-channel
+switch and relay modules which operate using the NMEA 2000 Switch Bank
 protocol implemented by PGN 127501 (Switch Bank Status) and  PGN 127502
 (Switch Bank Control).
 
@@ -117,7 +117,6 @@ The configurations string must consist of two, colon-delimited, fields
 |:-----------------|:-----------------------------------------------------------|
 | __notification__ | A path in the Signal K "notifications...." tree.           |
 | __ipc__          | The pathname of a Unix domain socket.                      |
-| __dbus__         | The name of D-Bus channel in the host operating system.    |
 
 The property value defaults to "notification:notifications.switchlogic.command".
 
@@ -175,3 +174,8 @@ The plugin understands the following debug keys.
 | switchbank:\*       | Enable all keys.                                |
 | switchbank:state    | Log changes to the plugin's relay state model.  |
 | switchbank:commands | Log commands received and issued by the plugin. |
+
+## Author
+
+Paul Reeve <preeve@pdjr.eu>\
+October 2020
