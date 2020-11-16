@@ -21,9 +21,9 @@ switch bank channel detected on the host NMEA bus.
 __signalk-switchbank__ extends this native support by providing a
 mechanism for decorating the switch bank paths built by Signal K with
 meta data derived from the plugin configuration file.
-Additionally (maybe more importantly) it provides a means of operating
-switch bank relay modules in response to updates in Signal K's
-'electrical.switches....' tree.
+Additionally it provides a means of operating switch bank relay modules
+in response to PUT requests addressed to relay paths under the plugin's
+control.
 
 ## Overview
 
@@ -46,30 +46,19 @@ plugin uses this meta-data to build a switch bank status display.
 
 ### Operating NMEA 2000 switch bank relays 
 
-__signalk-switchbank__ attaches to the switch paths of relay
-modules specified in its configuration file and listens for
-updates on the 'control' key.
+__signalk-switchbank__ attaches to the switch paths of relay modules
+specified in its configuration file and listens for Signal K PUT
+requests.
 
-The value of the control key will be a JSON object of the form: 
-```
-{
-  "moduleid": "*moduleid*",    // relay module instance number
-  "channelid": "*channelid*",  // relay channel index number
-  "state": *state*           // "0" or "1" (for OFF/ON)
-}
-```
-
-If *moduleid* and *channelid* identify a relay switchbank channel
-that is defined in the plugin configuration file then the plugin 
-promptly issues a PGN 127502 NMEA message to update the state of the
-specified remote device.
+When a put request is received which addresses a configured switchbank
+relay channel the plugin promptly issues a PGN 127502 NMEA message to
+update the state of the specified remote device.
 
 The plugin
 [signalk-switchlogic](https://github.com/preeve9534/signalk-switchlogic#readme)
-can be used to generate commands of the form consumed by
-__signalk-switchbank__ and the use of these plugins together enables
-simple and complex switching rules to directly operate NMEA 2000
-relays. 
+can be used to generate PUT requests the use of this plugin alolngside
+__signalk-switchbank__ allows simple and complex switching rules to
+directly operate NMEA 2000 relays. 
  
 ## System requirements
 
@@ -89,66 +78,22 @@ and installed using
 
 ## Configuration
 
-You can maintain the __signalk-switchbank__ configuration using either
-the Signal K plugin configuration GUI, or by editing the configuration
-file ```switchbank.json``` using a text editor.
+You can maintain the __signalk-switchbank__ configuration using the
+Signal K plugin configuration GUI.
+The configuration includes the following properties.
 
-The configuration file must have the following general structure:
-```
-{
-  "enabled": true,
-  "enableLogging": false,
-  "configuration": {
-    "controlchannel": "notification:notifications.switchlogic.control",
-    "switchbanks": [
-      *** ONE OR MORE SWITCHBANK DEFINITIONS ***
-    ]
-  }
-}
-```
+__Switch bank definitions__ [switchbanks]\
+This array property contains a collection of *switchbank definitions*
+each of which defines either as switch or a relay switchbank.
+Each switchbank definition has the following properties.
 
-The __controlchannel__ property value introduces a configuration string
-which sets up the channel on which the plugin will listen for relay
-operating commands.
-The configurations string must consist of two, colon-delimited, fields
-"*channel-type*__:__*channel-id*" with the following value constraints.
+__Switch bank instance__[instance]\
+This bumber propery specifies the instance number of the NMEA switch
+bank to which this definition applies.
 
-| *channel-type*   | *channel-id*                                               |
-|:-----------------|:-----------------------------------------------------------|
-| __notification__ | A path in the Signal K "notifications...." tree.           |
-| __ipc__          | The pathname of a Unix domain socket.                      |
-
-The property value defaults to "notification:notifications.switchlogic.command".
-
-The __switchbanks__ array is used to define the NMEA 2000 switchbanks
-which are of interest to the plugin.
-
-Each entry in the __switchbanks__ array defines a single switchbank.
-Here's an example drawn from my configuration file:
-```
-      {
-        "instance": 10,
-        "type": "relay",
-        "description": "Engine room relay module #210-3452",
-        "channels": [
-          { "index": 1, "description": "Immersion heater 1kW" },
-          { "index": 2, "description": "Immersion heater 2kW" },
-          { "index": 3, "description": "Hydrophore" },
-          { "index": 4, "description": "Boiler" },
-          { "index": 5, "description": "Chiller" },
-          { "index": 6, "description": "Thermal store" },
-          { "index": 7, "description": "(unused)" },
-          { "index": 8, "description": "(unused)" }
-        ]
-      }
-```
-
-The __instance__ property value uniquely identifies a switchbank module
-by specifying the module's NMEA instance number.
-
-The __type__ property value specifies whether a channel is a switch
-input or a relay output module and must be one of the values "switch"
-or "relay".
+__Switch bank type__[type]\
+This string property specifies whether the switch bank is a switch
+input module or a relay output module.
 
 Definitions for switch input modules are optional (the data supplied is
 only used for maintenance of switch channel meta values), but

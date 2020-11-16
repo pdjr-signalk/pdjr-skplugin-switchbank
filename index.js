@@ -87,25 +87,24 @@ module.exports = function(app) {
       }
     });
 
-    var controlPaths = options.switchbanks.filter(sb => (sb.type == "relay")).reduce((a,sb) => a.concat(sb.channels.map(ch => "electrical.switches.bank." + sb.instance + "." + ch.index + ".control")), []);
-    console.log(controlPaths);
-    var controlStreams = controlPaths.map(path => app.streambundle.getSelfStream(path).skipDuplicates());
-    var controlStream = bacon.mergeAll(controlStreams);
-    unsubscribes.push(controlStream.onValue(v => {
-      if (switchbanks[v.moduleid] !== undefined) {
-        debug.N("commands", "received command %o", v);
-        var buffer = Array.from(switchbanks[v.moduleid]).map(v => (v === undefined)?0:v);
-        buffer[v.channelid - 1] = ((v.state)?1:0);
-        message = Nmea2000.makeMessagePGN127502(v.moduleid, buffer);
-        app.emit('nmea2000out', message);
-        debug.N("commands", "transmitted NMEA message '%s'", message);
-      }
-    }));
+    var controlPaths = options.switchbanks.filter(sb => (sb.type == "relay")).reduce((a,sb) => a.concat(sb.channels.map(ch => "electrical.switches.bank." + sb.instance + "." + ch.index + ".state")), []);
+    controlPaths.forEach(path => app.registerPutHandler('vessels.self', path, actionHandler, plugin.id));
   }
 
   plugin.stop = function() {
 	unsubscribes.forEach(f => f());
 	unsubscribes = [];
+  }
+
+  function actionHandler(context, path, value, callback) {
+    debug.N("put", "processing put request: path = %s, value = %s", path, value);
+    var parts = path.split('.') || [];
+    var buffer = Array.from(switchbanks[parts[3]]).map(v => (v === undefined)?0:v);
+    buffer[parts[4] - 1] = ((value)?1:0);
+    message = Nmea2000.makeMessagePGN127502(parts[3], buffer);
+    app.emit('nmea2000out', message);
+    debug.N("put", "transmitted NMEA message '%s'", message);
+    return({ state: 'COMPLETED', statusCode: 200 });
   }
 
   /********************************************************************
