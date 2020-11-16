@@ -14,16 +14,12 @@
  * permissions and limitations under the License.
  */
 
-const fs = require('fs');
-const bacon = require('baconjs');
 const Log = require("./lib/signalk-liblog/Log.js");
-const DebugLog = require("./lib/signalk-liblog/DebugLog.js");
 const Schema = require("./lib/signalk-libschema/Schema.js");
 const Nmea2000 = require("./lib/signalk-libnmea2000/Nmea2000.js");
 
 const PLUGIN_SCHEMA_FILE = __dirname + "/schema.json";
 const PLUGIN_UISCHEMA_FILE = __dirname + "/uischema.json";
-const DEBUG_KEYS = [ "state", "commands" ];
 
 module.exports = function(app) {
   var plugin = {};
@@ -32,10 +28,9 @@ module.exports = function(app) {
 
   plugin.id = "switchbank";
   plugin.name = "Switch bank interface";
-  plugin.description = "NMEA 2000 switch bank interface.";
+  plugin.description = "Operate N2K relay output switch banks.";
 
   const log = new Log(plugin.id, { ncallback: app.setPluginStatus, ecallback: app.setPluginError });
-  const debug = new DebugLog(plugin.id, DEBUG_KEYS);
 
   plugin.schema = function() {
     var schema = Schema.createSchema(PLUGIN_SCHEMA_FILE);
@@ -49,7 +44,6 @@ module.exports = function(app) {
 
   plugin.start = function(options) {
     log.N("operating %d switch banks (%d relay banks)", options.switchbanks.length, options.switchbanks.filter(sb => (sb.type == "relay")).length);
-    debug.N("*", "available debug tokens: %s", debug.getKeys().join(", "));
 
     /******************************************************************
      * Harvest documentary data from the defined switchbanks and write
@@ -74,7 +68,7 @@ module.exports = function(app) {
     options.switchbanks.filter(sb => (sb.type == "relay")).forEach(switchbank => {
       let instance = switchbank.instance; 
       var maxindex = switchbank.channels.reduce((a,c) => ((c.index > a)?c.index:a), 0);
-      debug.N("state", "creating relay state model for switchbank %d (%d channels)", instance, (maxindex + 1)); 
+      debug("creating relay state model for switchbank %d (%d channels)", instance, (maxindex + 1)); 
       switchbanks[instance] = (new Array(maxindex)).fill(undefined);
       for (var i = 0; i < switchbank.channels.length; i++) {
         let channel = switchbank.channels[i].index;
@@ -82,10 +76,14 @@ module.exports = function(app) {
         let description = switchbank.channels[i].description;
         if (stream) stream.skipDuplicates().onValue(v => {
           switchbanks[instance][channel - 1] = v;
-          debug.N("state", "updating relay state model [%d,%d] = %d (%s)", instance, (channel - 1), v, description);
+          debug("updating relay state model [%d,%d] = %d (%s)", instance, (channel - 1), v, description);
         });
       }
     });
+
+    /******************************************************************
+     * Register a put handler for all switch bank relay channels.
+     */
 
     var controlPaths = options.switchbanks.filter(sb => (sb.type == "relay")).reduce((a,sb) => a.concat(sb.channels.map(ch => "electrical.switches.bank." + sb.instance + "." + ch.index + ".state")), []);
     controlPaths.forEach(path => app.registerPutHandler('vessels.self', path, actionHandler, plugin.id));
@@ -97,13 +95,13 @@ module.exports = function(app) {
   }
 
   function actionHandler(context, path, value, callback) {
-    debug.N("put", "processing put request: path = %s, value = %s", path, value);
+    debug("processing put request (path = %s, value = %s)", path, value);
     var parts = path.split('.') || [];
     var buffer = Array.from(switchbanks[parts[3]]).map(v => (v === undefined)?0:v);
     buffer[parts[4] - 1] = ((value)?1:0);
     message = Nmea2000.makeMessagePGN127502(parts[3], buffer);
     app.emit('nmea2000out', message);
-    debug.N("put", "transmitted NMEA message '%s'", message);
+    debug("transmitted NMEA message '%s'", message);
     return({ state: 'COMPLETED', statusCode: 200 });
   }
 

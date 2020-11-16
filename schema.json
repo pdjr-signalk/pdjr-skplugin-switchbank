@@ -2,7 +2,7 @@
   "type": "object",
   "properties": {
     "switchbanks" : {
-      "title": "Switch banks",
+      "title": "Switch bank definitions",
       "type": "array",
       "default": [],
       "items": {
@@ -10,40 +10,41 @@
         "required": [ "instance", "channels" ],
         "properties": {
           "instance": {
-            "title": "Instance",
-            "type": "string",
-            "default": ""
+            "title": "Switch bank instance",
+            "type": "number",
+            "default": 0
           },
           "type": {
-            "title": "Switchbank type",
+            "title": "Switch bank type",
             "type": "string",
             "enum": [ "switch", "relay" ],
             "default": "relay"
           },
           "description": {
-            "title": "Description",
+            "title": "Switch bank description",
             "type": "string",
             "default": ""
           },
           "channels": {
-            "title": "Channels",
+            "title": "Switch bank channels",
             "type": "array",
-            "default": [],
             "items": {
               "type": "object",
               "required": [ "index" ],
               "properties": {
                 "index": {
-                  "title": "Index",
-                  "type": "number"
+                  "title": "Channel index",
+                  "type": "number",
+                  "default": 1
                 },
                 "description": {
-                  "title": "Description",
+                  "title": "Channel description",
                   "type": "string",
                   "default": ""
                 }
               }
-            }
+            },
+            "default": []
           }
         }
       }

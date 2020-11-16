@@ -1,14 +1,14 @@
 {
-  "name": "signalk-switchbank",
+  "name": "switchbank",
   "version": "1.0.0",
-  "description": "NMEA 2000 switch bank interface.",
+  "description": "Operate N2K relay output switch banks.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/preeve9534/signalk-switchbank.git"
+    "url": "git+https://github.com/preeve9534/switchbank.git"
   },
   "keywords": [
     "signalk-node-server-plugin",
@@ -20,12 +20,13 @@
   "author": "Paul Reeve <preeve@pdjr.eu>",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/preeve9534/signalk-switchbank/issues"
+    "url": "https://github.com/preeve9534/switchbank/issues"
   },
-  "homepage": "https://github.com/preeve9534/signalk-switchbank#readme",
+  "homepage": "https://github.com/preeve9534/switchbank#readme",
   "dependencies": {
     "baconjs": "^1.0.1",
     "debug": "^4.2.0",
+    "sprint-js": "^0.1.0",
     "sprintf-js": "^1.1.2"
   }
 }
