@@ -13,7 +13,7 @@ modules which operate using the NMEA 2000 Switch Bank protocol
 implemented by PGN 127501 (Switch Bank Status) and  PGN 127502 (Switch
 Bank Control).
 
-__switchbank__ extends Signal K's native support for PGN 127501 by
+__switchbank__ extends Signal K's native switch bank support  by
 providing a mechanism for operating switch bank relay modules (using
 PGN 127502) in response to PUT requests addressed to switch bank paths
 under the plugin's control.

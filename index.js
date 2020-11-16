@@ -101,7 +101,7 @@ module.exports = function(app) {
     buffer[parts[4] - 1] = ((value)?1:0);
     message = Nmea2000.makeMessagePGN127502(parts[3], buffer);
     app.emit('nmea2000out', message);
-    debug("transmitted NMEA message '%s'", message);
+    Log.N("transmitting NMEA message '%s'", message);
     return({ state: 'COMPLETED', statusCode: 200 });
   }
 
