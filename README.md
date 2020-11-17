@@ -1,6 +1,6 @@
-# switchbank
+# signalk-switchbank
 
-Operate N2K relay switch banks.
+Operate N2K relay output switch banks.
 
 This project implements a plugin for the
 [Signal K Node server](https://github.com/SignalK/signalk-server-node).
@@ -8,12 +8,12 @@ This project implements a plugin for the
 Reading the [Alarm, alert and notification handling](http://signalk.org/specification/1.0.0/doc/notifications.html)
 section of the Signal K documentation may provide helpful orientation.
 
-__switchbank__ implements a control interface for multi-channel relay
-modules which operate using the NMEA 2000 Switch Bank protocol
+__signalk-switchbank__ implements a control interface for multi-channel
+relay modules which operate using the NMEA 2000 Switch Bank protocol
 implemented by PGN 127501 (Switch Bank Status) and  PGN 127502 (Switch
 Bank Control).
 
-__switchbank__ extends Signal K's native switch bank support  by
+__signalk-switchbank__ extends Signal K's native switch bank support by
 providing a mechanism for operating switch bank relay modules (using
 PGN 127502) in response to PUT requests addressed to switch bank paths
 under the plugin's control.
@@ -24,15 +24,15 @@ configuration file.
 
 ## System requirements
 
-__switchbank__ has no special installation requirements.
+__signalk-switchbank__ has no special installation requirements.
 
 Relay switch bank modules which are to be operated by the plugin must
 respond to NMEA 2000 PGN 127502 (Switch Bank Control) messages.
 
 ## Installation
 
-Download and install __switchbank__ using the "Appstore" menu option in
-your Signal K Node server console.
+Download and install __signalk-switchbank__ using the "Appstore" menu
+option in your Signal K Node server console.
 The plugin can also be obtained from the 
 [project homepage](https://github.com/preeve9534/signalk-switchbank)
 and installed using
@@ -40,22 +40,23 @@ and installed using
 
 ## Using the plugin
 
-__switchbank__ operates autonomously, but must be configured before use.
+__signalk-switchbank__ operates autonomously, but must be configured
+before use.
 
-The plugin configuration is stored in the file 'switchbank.json' and can
-be maintained using the Signal K plugin configuration GUI.
+The plugin configuration is stored in the file 'switchbank.json' and
+can be maintained using the Signal K plugin configuration GUI.
 
-The configuration consists of a collection of definitions which map map
+The configuration consists of a collection of definitions which map
 Signal K paths into the plugin's NMEA 2000 operating scheme.
 Definitions for switch input modules are optional (the data supplied is
 only used for maintenance of switch channel meta values), but
 definitions must be provided for any relay output modules that you
-expect __switchbank__ to operate. 
+expect __signalk-switchbank__ to operate. 
 
-__Switch bank definitions__ [switchbanks]\
+__Switch bank definitions__ [signalk-switchbanks]\
 This array property contains a collection of *switchbank definitions*
-each of which defines either as switch or a relay switchbank.
-Each switchbank definition has the following properties.
+each of which defines either a switch or a relay switchbank.
+Each signalk-switchbank definition has the following properties.
 
 __Switch bank instance__[instance]\
 This number property specifies the instance number of the NMEA switch
