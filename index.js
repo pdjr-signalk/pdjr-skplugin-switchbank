@@ -68,7 +68,7 @@ module.exports = function(app) {
     options.switchbanks.filter(sb => (sb.type == "relay")).forEach(switchbank => {
       let instance = switchbank.instance; 
       var maxindex = switchbank.channels.reduce((a,c) => ((c.index > a)?c.index:a), 0);
-      debug("creating relay state model for switchbank %d (%d channels)", instance, (maxindex + 1)); 
+      app.debug("creating relay state model for switchbank %d (%d channels)", instance, (maxindex + 1)); 
       switchbanks[instance] = (new Array(maxindex)).fill(undefined);
       for (var i = 0; i < switchbank.channels.length; i++) {
         let channel = switchbank.channels[i].index;
@@ -76,7 +76,7 @@ module.exports = function(app) {
         let description = switchbank.channels[i].description;
         if (stream) stream.skipDuplicates().onValue(v => {
           switchbanks[instance][channel - 1] = v;
-          debug("updating relay state model [%d,%d] = %d (%s)", instance, (channel - 1), v, description);
+          app.debug("updating relay state model [%d,%d] = %d (%s)", instance, (channel - 1), v, description);
         });
       }
     });
@@ -95,13 +95,13 @@ module.exports = function(app) {
   }
 
   function actionHandler(context, path, value, callback) {
-    debug("processing put request (path = %s, value = %s)", path, value);
+    app.debug("processing put request (path = %s, value = %s)", path, value);
     var parts = path.split('.') || [];
     var buffer = Array.from(switchbanks[parts[3]]).map(v => (v === undefined)?0:v);
     buffer[parts[4] - 1] = ((value)?1:0);
     message = Nmea2000.makeMessagePGN127502(parts[3], buffer);
     app.emit('nmea2000out', message);
-    Log.N("transmitting NMEA message '%s'", message);
+    log.N("transmitting NMEA message '%s'", message);
     return({ state: 'COMPLETED', statusCode: 200 });
   }
 
