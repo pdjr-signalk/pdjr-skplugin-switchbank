@@ -54,7 +54,13 @@ module.exports = function(app) {
     var flattenedChannels = options.switchbanks.reduce((a,sb) => a.concat(sb.channels.map(ch => { return({"instance": sb.instance, "index": ch.index, "type": sb.type, "description": ch.description })})), []);
     var deltas = flattenedChannels.map(c => ({
       "path": "electrical.switches.bank." + c.instance + "." + c.index + ".meta",
-      "value": { "name": c.description, "type": c.type }
+      "value": {
+        "displayName": c.description,
+        "longName": c.description + " (bank " + c.instance + ", channel " + c.index + ")",
+        "shortName": "[" + c.instance + "," + c.index + "]",
+        "description": (c.type + " state (0=OFF, 1=ON)").trim(),
+        "type": c.type
+      }
     }));
     app.handleMessage(plugin.id, makeDelta(plugin.id, deltas));
 
