@@ -94,13 +94,38 @@ module.exports = function(app) {
 	unsubscribes = [];
   }
 
+  /********************************************************************
+   * Process a put request for switchbank state change. Signal K does
+    not pass a handle to the request source and since we want to
+   * process requests emanating from physical switches differently to
+   * requests emanating from virtual devices, we need a work-around.
+   *
+   * So, we extend what constitutes a value (normally 0 or 1) to allow
+   * values 2 and 3 for virtual OFF and ON.
+   */
+  
   function actionHandler(context, path, value, callback) {
     app.debug("processing put request (path = %s, value = %s)", path, value);
     var parts = path.split('.') || [];
     var buffer = Array.from(switchbanks[parts[3]]).map(v => (v === undefined)?0:v);
+    var setValue = (value & 0x01);
+    switch (value) {
+      case 0: // OFF request from switch
+        break;
+      case 1: // ON request from switch
+        break;
+      case 2: // OFF request from virtual switch
+        value = 0;
+        break;
+      case 3: // ON request from virtual switch
+        value = 1;
+        break;
+      default:
+        break;
+    }
     buffer[parts[4] - 1] = ((value)?1:0);
     message = Nmea2000.makeMessagePGN127502(parts[3], buffer);
-    app.emit('nmea2000out', message);
+    app.emit('nmea2000out', message); app.emit('nmea2000out', message);
     log.N("transmitting NMEA message '%s'", message);
     return({ state: 'COMPLETED', statusCode: 200 });
   }
