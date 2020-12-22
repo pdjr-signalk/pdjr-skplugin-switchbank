@@ -52,17 +52,17 @@ module.exports = function(app) {
      */
 
     var flattenedChannels = options.switchbanks.reduce((a,sb) => a.concat(sb.channels.map(ch => { return({"instance": sb.instance, "index": ch.index, "type": sb.type, "description": ch.description })})), []);
-    var deltas = flattenedChannels.map(c => ({
-      "path": "electrical.switches.bank." + c.instance + "." + c.index + ".meta",
-      "value": {
+    flattenedChannels.forEach(c => {
+      var metaPath = app.getPath("self") + ".electrical.switches.bank." + c.instance + "." + c.index + ".state";
+      var metaValue = {
         "displayName": c.description,
         "longName": c.description + " (bank " + c.instance + ", channel " + c.index + ")",
         "shortName": "[" + c.instance + "," + c.index + "]",
         "description": (c.type + " state (0=OFF, 1=ON)").trim(),
         "type": c.type
-      }
-    }));
-    app.handleMessage(plugin.id, makeDelta(plugin.id, deltas));
+      };
+      app.handleMessage(plugin.id, staticDelta(metaPath, "meta", metaValue));
+    });
 
     /******************************************************************
      * NMEA switchbanks are updated with aggregate state information
@@ -150,6 +150,13 @@ module.exports = function(app) {
         "timestamp": (new Date()).toISOString(),
         "values": pairs.map(p => { return({ "path": p.path, "value": p.value }); }) 
       }]
+    });
+  }
+
+  function staticDelta(fullpath, key, value) {
+    return({
+      "context": fullpath,
+      "updates": [ { "values": [ { "path": "", "value": { [key]: value } } ] } ] 
     });
   }
 
