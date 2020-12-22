@@ -14,6 +14,7 @@
  * permissions and limitations under the License.
  */
 
+const Delta = require("./lib/signalk-libdelta/Delta.js");
 const Log = require("./lib/signalk-liblog/Log.js");
 const Schema = require("./lib/signalk-libschema/Schema.js");
 const Nmea2000 = require("./lib/signalk-libnmea2000/Nmea2000.js");
@@ -45,6 +46,8 @@ module.exports = function(app) {
   plugin.start = function(options) {
     log.N("operating %d switch banks (%d relay banks)", options.switchbanks.length, options.switchbanks.filter(sb => (sb.type == "relay")).length);
 
+    var delta = new Delta(app, plugin.id);
+
     /******************************************************************
      * Harvest documentary data from the defined switchbanks and write
      * it to the Signal K tree as meta information for each of the
@@ -53,16 +56,15 @@ module.exports = function(app) {
 
     var flattenedChannels = options.switchbanks.reduce((a,sb) => a.concat(sb.channels.map(ch => { return({"instance": sb.instance, "index": ch.index, "type": sb.type, "description": ch.description })})), []);
     flattenedChannels.forEach(c => {
-      var metaPath = app.getPath("self") + ".electrical.switches.bank." + c.instance + "." + c.index + ".state";
-      var metaValue = {
-        "displayName": c.description,
-        "longName": c.description + " (bank " + c.instance + ", channel " + c.index + ")",
-        "shortName": "[" + c.instance + "," + c.index + "]",
-        "description": (c.type + " state (0=OFF, 1=ON)").trim(),
-        "type": c.type
-      };
-      app.handleMessage(plugin.id, staticDelta(metaPath, "meta", metaValue));
+      delta.addMeta("electrical.switches.bank." + c.instance + "." + c.index + ".state", {
+        description: (c.type + " state (0=OFF, 1=ON)").trim(),
+        displayName: c.description,
+        longName: c.description + " (bank " + c.instance + ", channel " + c.index + ")",
+        shortName: "[" + c.instance + "," + c.index + "]",
+        type: c.type
+      });
     });
+    delta.commit();
 
     /******************************************************************
      * NMEA switchbanks are updated with aggregate state information
@@ -134,30 +136,6 @@ module.exports = function(app) {
     app.emit('nmea2000out', message); app.emit('nmea2000out', message);
     log.N("transmitting NMEA message '%s'", message);
     return({ state: 'COMPLETED', statusCode: 200 });
-  }
-
-  /********************************************************************
-   * Return a delta from <pairs> which can be a single value of the
-   * form { path, value } or an array of such values. <src> is the name
-   * of the process which will issue the delta update.
-   */
-
-  function makeDelta(src, pairs = []) {
-    pairs = (Array.isArray(pairs))?pairs:[pairs]; 
-    return({
-      "updates": [{
-        "source": { "type": "plugin", "src": src, },
-        "timestamp": (new Date()).toISOString(),
-        "values": pairs.map(p => { return({ "path": p.path, "value": p.value }); }) 
-      }]
-    });
-  }
-
-  function staticDelta(fullpath, key, value) {
-    return({
-      "context": fullpath,
-      "updates": [ { "values": [ { "path": "", "value": { [key]: value } } ] } ] 
-    });
   }
 
   return(plugin);
