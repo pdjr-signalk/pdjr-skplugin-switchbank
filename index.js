@@ -21,6 +21,7 @@ const Nmea2000 = require("./lib/signalk-libnmea2000/Nmea2000.js");
 
 const PLUGIN_SCHEMA_FILE = __dirname + "/schema.json";
 const PLUGIN_UISCHEMA_FILE = __dirname + "/uischema.json";
+const PLUGIN_METADATA_KEY = "notifications.plugins.switchbank.metadata";
 
 module.exports = function(app) {
   var plugin = {};
@@ -46,7 +47,6 @@ module.exports = function(app) {
   plugin.start = function(options) {
     log.N("operating %d switch banks (%d relay banks)", options.switchbanks.length, options.switchbanks.filter(sb => (sb.type == "relay")).length);
 
-    var delta = new Delta(app, plugin.id);
 
     /******************************************************************
      * Harvest documentary data from the defined switchbanks and write
@@ -54,18 +54,29 @@ module.exports = function(app) {
      * specified switch channel paths.
      */
 
-    var flattenedChannels = options.switchbanks.reduce((a,sb) => a.concat(sb.channels.map(ch => { return({"instance": sb.instance, "index": ch.index, "type": sb.type, "description": ch.description })})), []);
-    flattenedChannels.forEach(c => {
-      delta.addMeta("electrical.switches.bank." + c.instance + "." + c.index + ".state", {
-        description: (c.type + " state (0=OFF, 1=ON)").trim(),
-        displayName: c.description,
-        longName: c.description + " (bank " + c.instance + ", channel " + c.index + ")",
-        shortName: "[" + c.instance + "," + c.index + "]",
-        type: c.type
-      });
+    var metadata = [];
+    options.switchbanks.forEach(switchbank => {
+      if (switchbank.description) {
+        metadata.push({ key: "electrical.switches.bank.", description: "Instance number of N2K switchbank (range 0 - 254)" }); 
+        metadata.push({ key: "electrical.switches.bank." + switchbank.instance, description: switchbank.description });
+      }
+      for (var c = 1; c <= switchbank.channelcount; c++) {
+        var meta = {
+          key: "electrical.switches.bank." + switchbank.instance + "." + c + ".state",
+          description: "Binary " + switchbank.type + " channel state (0 = OFF, 1 = ON)",
+          type: switchbank.type,
+          shortName: "[" + switchbank.instance + "," + c + "]"
+        }
+        var description = switchbank.channels.reduce((a,ch) => { return((ch.index == c)?ch.description:a); }, null);
+        if (description) {
+          meta.displayName = description;
+          meta.longName = description + " " + meta.shortName;
+        }
+        metadata.push(meta);
+      }
     });
-    delta.commit();
-
+    (new Delta(app, plugin.id)).addValue(PLUGIN_METADATA_KEY, metadata).commit().clear();
+    
     /******************************************************************
      * NMEA switchbanks are updated with aggregate state information
      * for every contained channel. Consequently, we need to keep track
@@ -75,16 +86,15 @@ module.exports = function(app) {
 
     options.switchbanks.filter(sb => (sb.type == "relay")).forEach(switchbank => {
       let instance = switchbank.instance; 
-      var maxindex = switchbank.channels.reduce((a,c) => ((c.index > a)?c.index:a), 0);
-      app.debug("creating relay state model for switchbank %d (%d channels)", instance, (maxindex + 1)); 
+      var maxindex = switchbank.channelcount;
+      app.debug("creating relay state model for switchbank %d (%d channels)", instance, maxindex); 
       switchbanks[instance] = (new Array(maxindex)).fill(undefined);
-      for (var i = 0; i < switchbank.channels.length; i++) {
-        let channel = switchbank.channels[i].index;
+      for (var i = 1; i <= maxindex; i++) {
+        let channel = i;
         let stream = app.streambundle.getSelfStream("electrical.switches.bank." + instance + "." + channel + ".state");
-        let description = switchbank.channels[i].description;
         if (stream) stream.skipDuplicates().onValue(v => {
           switchbanks[instance][channel - 1] = v;
-          app.debug("updating relay state model [%d,%d] = %d (%s)", instance, (channel - 1), v, description);
+          app.debug("updating relay state model [%d,%d] = %d", instance, (channel - 1), v);
         });
       }
     });
@@ -93,8 +103,13 @@ module.exports = function(app) {
      * Register a put handler for all switch bank relay channels.
      */
 
-    var controlPaths = options.switchbanks.filter(sb => (sb.type == "relay")).reduce((a,sb) => a.concat(sb.channels.map(ch => "electrical.switches.bank." + sb.instance + "." + ch.index + ".state")), []);
-    controlPaths.forEach(path => app.registerPutHandler('vessels.self', path, actionHandler, plugin.id));
+    options.switchbanks.filter(sb => (sb.type == "relay")).forEach(sb => {
+      for (var ch = 1; ch <= sb.channelcount; ch++) {
+        var path = "electrical.switches.bank." + sb.instance + "." + ch + ".state";
+        app.registerPutHandler('vessels.self', path, actionHandler, plugin.id);
+      }
+    });
+
   }
 
   plugin.stop = function() {

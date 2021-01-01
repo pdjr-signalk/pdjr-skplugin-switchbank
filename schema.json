@@ -7,23 +7,23 @@
       "default": [],
       "items": {
         "type": "object",
-        "required": [ "instance", "channels" ],
+        "required": [ "instance", "channelcount" ],
         "properties": {
           "instance": {
-            "title": "Switch bank instance",
-            "type": "number",
-            "default": 0
+            "description": "NMEA 2000 switchbank instance number",
+            "type": "number", "default": 0, "title": "Switch bank instance"
           },
           "type": {
-            "title": "Switch bank type",
-            "type": "string",
-            "enum": [ "switch", "relay" ],
-            "default": "relay"
+            "description": "Whether this switchbanks is a switch input module or a relay output module",
+            "type": "string", "default": "relay", "enum": [ "switch", "relay" ], "title": "Switch bank type"
+          },
+          "channelcount": {
+            "description": "Number of channels supported by the module",
+            "type": "number", "default": 8, "title": "Number of supported channels"
           },
           "description": {
-            "title": "Switch bank description",
-            "type": "string",
-            "default": ""
+            "description": "Narrative describing the module (serial no, intall location, etc)",
+            "type": "string", "default": "", "title": "Switch bank description"
           },
           "channels": {
             "title": "Switch bank channels",
