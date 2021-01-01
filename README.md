@@ -5,22 +5,16 @@ Operate N2K relay output switch banks.
 This project implements a plugin for the
 [Signal K Node server](https://github.com/SignalK/signalk-server-node).
 
-Reading the [Alarm, alert and notification handling](http://signalk.org/specification/1.0.0/doc/notifications.html)
-section of the Signal K documentation may provide helpful orientation.
-
-__signalk-switchbank__ implements a control interface for multi-channel
-relay modules which operate using the NMEA 2000 Switch Bank protocol
-implemented by PGN 127501 (Switch Bank Status) and  PGN 127502 (Switch
-Bank Control).
-
 __signalk-switchbank__ extends Signal K's native switch bank support by
 providing a mechanism for operating switch bank relay modules (using
 PGN 127502) in response to PUT requests addressed to switch bank paths
 under the plugin's control.
 
-Additionally, the plugin provides a means of decorating switch bank
-paths (both switch and relay) with meta data derived from the plugin
-configuration file.
+Additionally, the plugin provides a means of automatically generating
+switch state meta data for both switch and relay modules in a form that
+can be consumed by the
+[signalk-meta](https://github.com/preeve9534/signalk-meta#readme)
+plugin.
 
 ## System requirements
 
@@ -42,6 +36,25 @@ and installed using
 
 __signalk-switchbank__ operates autonomously, but must be configured
 before use.
+
+### Basic configuration (no meta data support)
+
+A minimal configuration of __signalk-switchbank__ supplies just enough
+information for the plugin to respond to PUT requests targetted at
+switch keys which are associated with relay output switch banks.
+
+For a vessel with four 8-channel relay output modules this might be
+something as simple as:
+```
+switchbanks: [
+  { instance: 10, channelcount: 8, type: "relay" }
+  { instance: 26, channelcount: 8, type: "relay" }
+  { instance: 15, channelcount: 8, type: "relay" }
+  { instance: 31, channelcount: 8, type: "relay" }
+]
+```
+
+
 
 The plugin configuration is stored in the file 'switchbank.json' and
 can be maintained using the Signal K plugin configuration GUI.
