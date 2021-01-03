@@ -57,24 +57,24 @@ module.exports = function(app) {
     var metadata = [];
     options.switchbanks.forEach(switchbank => {
       if (switchbank.description) {
-        metadata.push({ key: "electrical.switches.bank.", description: "Instance number of N2K switchbank (range 0 - 254)" }); 
-        metadata.push({ key: "electrical.switches.bank." + switchbank.instance, description: switchbank.description });
+        //metadata.push({ key: "electrical.switches.bank.", description: "Instance number of N2K switchbank (range 0 - 254)" }); 
+        //metadata.push({ key: "electrical.switches.bank." + switchbank.instance, description: switchbank.description });
       }
-      for (var c = 1; c <= switchbank.channelcount; c++) {
-        var meta = {
-          key: "electrical.switches.bank." + switchbank.instance + "." + c + ".state",
-          description: "Binary " + switchbank.type + " channel state (0 = OFF, 1 = ON)",
-          type: switchbank.type,
-          shortName: "[" + switchbank.instance + "," + c + "]"
-        }
-        var description = switchbank.channels.reduce((a,ch) => { return((ch.index == c)?ch.description:a); }, null);
-        if (description) {
-          meta.displayName = description;
-          meta.longName = description + " " + meta.shortName;
-        }
-        metadata.push(meta);
+      if (switchbank.channels) {
+        switchbank.channels.forEach(channel => {
+          var meta = {
+            key: "electrical.switches.bank." + switchbank.instance + "." + channel.index + ".state",
+            description: "Binary " + switchbank.type + " state (0 = OFF, 1 = ON)",
+            type: switchbank.type
+          };
+          meta.shortName = "[" + switchbank.instance + "," + channel.index + "]"
+          meta.displayName = channel.description || meta.shortName;
+          meta.longName = meta.displayName + " " + meta.shortName;
+          metadata.push(meta);
+        });
       }
     });
+    log.N("saving metadata to '%s' (%d items)", PLUGIN_METADATA_KEY, metadata.length);
     (new Delta(app, plugin.id)).addValue(PLUGIN_METADATA_KEY, metadata).commit().clear();
     
     /******************************************************************
@@ -92,9 +92,9 @@ module.exports = function(app) {
       for (var i = 1; i <= maxindex; i++) {
         let channel = i;
         let stream = app.streambundle.getSelfStream("electrical.switches.bank." + instance + "." + channel + ".state");
-        if (stream) stream.skipDuplicates().onValue(v => {
+        if (stream) stream.filter((v) => ((!isNaN(v)) && ((v === 0) || (v === 1)))).skipDuplicates().onValue(v => {
           switchbanks[instance][channel - 1] = v;
-          app.debug("updating relay state model [%d,%d] = %d", instance, (channel - 1), v);
+          app.debug("updating relay state model [%d,%d] = %d", instance, channel, v);
         });
       }
     });
@@ -131,25 +131,15 @@ module.exports = function(app) {
     app.debug("processing put request (path = %s, value = %s)", path, value);
     var parts = path.split('.') || [];
     var buffer = Array.from(switchbanks[parts[3]]).map(v => (v === undefined)?0:v);
-    var setValue = (value & 0x01);
-    switch (value) {
-      case 0: // OFF request from switch
-        break;
-      case 1: // ON request from switch
-        break;
-      case 2: // OFF request from virtual switch
-        value = 0;
-        break;
-      case 3: // ON request from virtual switch
-        value = 1;
-        break;
-      default:
-        break;
+    if ((!isNaN(value)) && ((value === 0) || (value === 1) || (value === 2) || (value === 3))) {
+      value = (value & 0x01);
+      buffer[parts[4] - 1] = value;
+      message = Nmea2000.makeMessagePGN127502(parts[3], buffer);
+      app.emit('nmea2000out', message); app.emit('nmea2000out', message);
+      log.N("transmitting NMEA message '%s'", message);
+    } else {
+      log.E("invalid value (%s) in put request", value);
     }
-    buffer[parts[4] - 1] = ((value)?1:0);
-    message = Nmea2000.makeMessagePGN127502(parts[3], buffer);
-    app.emit('nmea2000out', message); app.emit('nmea2000out', message);
-    log.N("transmitting NMEA message '%s'", message);
     return({ state: 'COMPLETED', statusCode: 200 });
   }
 
