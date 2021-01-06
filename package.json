@@ -1,5 +1,5 @@
 {
-  "name": "signalk-switchbank",
+  "name": "pdjr-skplugin-switchbank",
   "version": "1.0.0",
   "description": "Operate N2K relay output switch banks.",
   "main": "index.js",
@@ -8,21 +8,21 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/preeve9534/signalk-switchbank.git"
+    "url": "git+https://github.com/preeve9534/pdjr-skplugin-switchbank.git"
   },
   "keywords": [
     "signalk-node-server-plugin",
     "signalk",
-    "signalk-switchbank",
+    "pdjr-skplugin-switchbank",
     "plugin",
     "NMEA"
   ],
   "author": "Paul Reeve <preeve@pdjr.eu>",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/preeve9534/signalk-switchbank/issues"
+    "url": "https://github.com/preeve9534/pdjr-skplugin-switchbank/issues"
   },
-  "homepage": "https://github.com/preeve9534/signalk-switchbank#readme",
+  "homepage": "https://github.com/preeve9534/pdjr-skplugin-switchbank#readme",
   "dependencies": {
     "baconjs": "^1.0.1",
     "debug": "^4.2.0",

@@ -1,11 +1,11 @@
-# signalk-switchbank
+# pdjr-skplugin-switchbank
 
 Operate N2K relay output switch banks.
 
 This project implements a plugin for the
 [Signal K Node server](https://github.com/SignalK/signalk-server-node).
 
-__signalk-switchbank__ extends Signal K's native switch bank support by
+__pdjr-skplugin-switchbank__ extends Signal K's native switch bank support by
 providing a mechanism for operating switch bank relay modules (using
 PGN 127502) in response to PUT requests addressed to switch bank paths
 under the plugin's control.
@@ -18,28 +18,28 @@ plugin.
 
 ## System requirements
 
-__signalk-switchbank__ has no special installation requirements.
+__pdjr-skplugin-switchbank__ has no special installation requirements.
 
 Relay switch bank modules which are to be operated by the plugin must
 respond to NMEA 2000 PGN 127502 (Switch Bank Control) messages.
 
 ## Installation
 
-Download and install __signalk-switchbank__ using the "Appstore" menu
+Download and install __pdjr-skplugin-switchbank__ using the "Appstore" menu
 option in your Signal K Node server console.
 The plugin can also be obtained from the 
-[project homepage](https://github.com/preeve9534/signalk-switchbank)
+[project homepage](https://github.com/preeve9534/pdjr-skplugin-switchbank)
 and installed using
 [these instructions](https://github.com/SignalK/signalk-server-node/blob/master/SERVERPLUGINS.md).
 
 ## Using the plugin
 
-__signalk-switchbank__ operates autonomously, but must be configured
+__pdjr-skplugin-switchbank__ operates autonomously, but must be configured
 before use.
 
 ### Basic configuration (no meta data support)
 
-A minimal configuration of __signalk-switchbank__ supplies just enough
+A minimal configuration of __pdjr-skplugin-switchbank__ supplies just enough
 information for the plugin to respond to PUT requests targetted at
 switch keys which are associated with relay output switch banks.
 
@@ -64,12 +64,12 @@ Signal K paths into the plugin's NMEA 2000 operating scheme.
 Definitions for switch input modules are optional (the data supplied is
 only used for maintenance of switch channel meta values), but
 definitions must be provided for any relay output modules that you
-expect __signalk-switchbank__ to operate. 
+expect __pdjr-skplugin-switchbank__ to operate. 
 
-__Switch bank definitions__ [signalk-switchbanks]\
+__Switch bank definitions__ [pdjr-skplugin-switchbanks]\
 This array property contains a collection of *switchbank definitions*
 each of which defines either a switch or a relay switchbank.
-Each signalk-switchbank definition has the following properties.
+Each pdjr-skplugin-switchbank definition has the following properties.
 
 __Switch bank instance__[instance]\
 This number property specifies the instance number of the NMEA switch

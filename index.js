@@ -28,8 +28,8 @@ module.exports = function(app) {
   var unsubscribes = [];
   var switchbanks = {};
 
-  plugin.id = "switchbank";
-  plugin.name = "Switch bank interface";
+  plugin.id = "pdjr-skplugin-switchbank";
+  plugin.name = "N2K switch bank interface";
   plugin.description = "Operate N2K relay output switch banks.";
 
   const log = new Log(plugin.id, { ncallback: app.setPluginStatus, ecallback: app.setPluginError });
