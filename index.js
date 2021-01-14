@@ -70,6 +70,7 @@ module.exports = function(app) {
           meta.shortName = "[" + switchbank.instance + "," + channel.index + "]"
           meta.displayName = channel.description || meta.shortName;
           meta.longName = meta.displayName + " " + meta.shortName;
+          meta.timeout = 10000;
           metadata.push(meta);
         });
       }
