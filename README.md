@@ -45,10 +45,13 @@ configuration interface.
 
 ### Configuring relay operation
 
-A minimal functional configuration of __pdjr-skplugin-switchbank__
-defines N2K relay output modules by specifying their instance number
-and the number of supported relay channels.
-For example.
+A minimal configuration (i.e. one that is sufficient to allow the operation
+of remote relays) need only specify the involved relay switch modules as
+they present in Signal K.
+Most users will probably find it useful for documentation purposes to specify
+all of the switch banks on their N2K system, both relay and switch.
+For example, my ship has two 16-channel switch input modules and four 8-channel
+relay output modules.
 ```
 {
   "enabled": true,
@@ -56,9 +59,11 @@ For example.
   "configuration": {
     "metainjectorfifo": "/tmp/meta-injector",
     "switchbanks": [
-      { "instance": 10, "channelcount": 8, "type": "relay" }
-      { "instance": 26, "channelcount": 8, "type": "relay" }
-      { "instance": 15, "channelcount": 8, "type": "relay" }
+      { "instance": 0, "channelcount": 16, "type": "switch" },
+      { "instance": 16, "channelcount": 16, "type": "switch" },
+      { "instance": 10, "channelcount": 8, "type": "relay" },
+      { "instance": 26, "channelcount": 8, "type": "relay" },
+      { "instance": 15, "channelcount": 8, "type": "relay" },
       { "instance": 31, "channelcount": 8, "type": "relay" }
     ]
   }
@@ -66,8 +71,8 @@ For example.
 ```
 A populated "switchbanks" array property is all that is required to bring
 relay output channels under plugin control: issuing a PUT request on any
-of the defined channels will result in operation of the associated remote
-relay via PGN.
+of the defined relay channels will result in operation of the associated
+remote relay via transmission of PGN 127502 message.
 
 In this example, the optional "metainjectorfifo" property allows the plugin
 to issue a minimal, automatically generated, collection of meta data to the
