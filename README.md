@@ -13,7 +13,7 @@ under the plugin's control.
 Additionally, the plugin provides a means of automatically generating
 switch state meta data for both switch and relay modules in a form that
 can be consumed by the
-[signalk-meta](https://github.com/preeve9534/signalk-meta#readme)
+[pdjr-skplugin-meta-injector](https://github.com/preeve9534/pdjr-skplugin-meta-injector#readme)
 plugin.
 
 ## System requirements
@@ -53,8 +53,6 @@ switchbanks: [
   { instance: 31, channelcount: 8, type: "relay" }
 ]
 ```
-
-
 
 The plugin configuration is stored in the file 'switchbank.json' and
 can be maintained using the Signal K plugin configuration GUI.

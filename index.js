@@ -14,6 +14,8 @@
  * permissions and limitations under the License.
  */
 
+const net = require('net');
+const fs = require('fs');
 const Delta = require("./lib/signalk-libdelta/Delta.js");
 const Log = require("./lib/signalk-liblog/Log.js");
 const Schema = require("./lib/signalk-libschema/Schema.js");
@@ -21,7 +23,6 @@ const Nmea2000 = require("./lib/signalk-libnmea2000/Nmea2000.js");
 
 const PLUGIN_SCHEMA_FILE = __dirname + "/schema.json";
 const PLUGIN_UISCHEMA_FILE = __dirname + "/uischema.json";
-const PLUGIN_METADATA_KEY = "notifications.plugins.switchbank.metadata";
 
 module.exports = function(app) {
   var plugin = {};
@@ -49,34 +50,47 @@ module.exports = function(app) {
 
 
     /******************************************************************
-     * Harvest documentary data from the defined switchbanks and write
-     * it to the Signal K tree as meta information for each of the
-     * specified switch channel paths.
+     * If options.metainjectorfifo is defined then harvest documentary
+     * data from any defined switchbanks and write it to metadata
+     * injector service on the defined FIFO.
      */
 
-    var metadata = [];
-    options.switchbanks.forEach(switchbank => {
-      if (switchbank.description) {
-        //metadata.push({ key: "electrical.switches.bank.", description: "Instance number of N2K switchbank (range 0 - 254)" }); 
-        //metadata.push({ key: "electrical.switches.bank." + switchbank.instance, description: switchbank.description });
-      }
-      if (switchbank.channels) {
-        switchbank.channels.forEach(channel => {
-          var meta = {
-            key: "electrical.switches.bank." + switchbank.instance + "." + channel.index + ".state",
-            description: "Binary " + switchbank.type + " state (0 = OFF, 1 = ON)",
-            type: switchbank.type
-          };
-          meta.shortName = "[" + switchbank.instance + "," + channel.index + "]"
-          meta.displayName = channel.description || meta.shortName;
-          meta.longName = meta.displayName + " " + meta.shortName;
-          meta.timeout = 10000;
-          metadata.push(meta);
+    if (options.metainjectorfifo) {
+      if (fs.existsSync(options.metainjectorfifo)) {
+        var metadata = [];
+        options.switchbanks.forEach(switchbank => {
+          if (switchbank.description) {
+            //metadata.push({ key: "electrical.switches.bank.", description: "Instance number of N2K switchbank (range 0 - 254)" }); 
+            //metadata.push({ key: "electrical.switches.bank." + switchbank.instance, description: switchbank.description });
+          }
+          if (switchbank.channels) {
+            switchbank.channels.forEach(channel => {
+              var meta = {
+                key: "electrical.switches.bank." + switchbank.instance + "." + channel.index + ".state",
+                description: "Binary " + switchbank.type + " state (0 = OFF, 1 = ON)",
+                type: switchbank.type
+              };
+              meta.shortName = "[" + switchbank.instance + "," + channel.index + "]"
+              meta.displayName = channel.description || meta.shortName;
+              meta.longName = meta.displayName + " " + meta.shortName;
+              meta.timeout = 10000;
+              metadata.push(meta);
+            });
+          }
         });
+        if (metadata.length) {
+          var client = new net.Socket();
+          client.connect(options.metainjectorfifo);
+          client.on('connect', () => {
+            log.N("sending %d metadata keys to injector service at '%s'", metadata.length, options.metainjectorfifo);
+            client.write(JSON.stringify(metadata));
+            client.end();
+          });
+        }
+      } else {
+        log.E("meta injector FIFO (%s) does not exist", options.metainjectorfifo);
       }
-    });
-    log.N("saving metadata to '%s' (%d items)", PLUGIN_METADATA_KEY, metadata.length);
-    (new Delta(app, plugin.id)).addValue(PLUGIN_METADATA_KEY, metadata).commit().clear();
+    }
     
     /******************************************************************
      * NMEA switchbanks are updated with aggregate state information

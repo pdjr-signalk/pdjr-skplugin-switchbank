@@ -1,6 +1,10 @@
 {
   "type": "object",
   "properties": {
+    "metainjectorfifo": {
+      "description": "Unix FIFO used to access a metadata injector service",
+      "type": "string", "default": "/tmp/meta-injector", "title": "FIFO path for meta injector service"
+    },
     "switchbanks" : {
       "title": "Switch bank definitions",
       "type": "array",
