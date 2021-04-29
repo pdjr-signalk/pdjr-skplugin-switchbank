@@ -1,26 +1,24 @@
 # pdjr-skplugin-switchbank
 
-Operate N2K relay output switch banks.
+Extend support for NMEA 2000 switch banks.
 
 This project implements a plugin for the
 [Signal K Node server](https://github.com/SignalK/signalk-server-node).
 
-__pdjr-skplugin-switchbank__ installs a handler on Signal K switch bank
-keys that are associated with channels on remote N2K relay modules.
-The handler processes received PUT requests, issuing PGN 127502 (Switch
-Bank Control) messages to set the remote relay state.
-
-Additionally, the plugin provides a means of automatically generating
-and publishing meta data that describes both switch and relay switch
-bank keys.
-Meta data is published on a user-defined FIFO in a format consistent
-with the requirements of the
-[pdjr-skplugin-meta-injector](https://github.com/preeve9534/pdjr-skplugin-meta-injector#readme)
-plugin.
+__pdjr-skplugin-switchbank__ is a plugin which extends Signal K's support
+for NMEA 2000 switch banks by (i) providing a mechanism for decorating
+switch bank 'state' keys with automatically generated and/or user-supplied
+meta data and (ii) allowing a PUT operation on a switch bank relay channel
+to operate a remote relay using PGN 127502 (Switch Bank Control) messages.
 
 ## System requirements
 
 __pdjr-skplugin-switchbank__ has no special installation requirements.
+
+The meta data support feature relies upon the presence of the
+[pdjr-skplugin-meta-injector](https://github.com/preeve9534/pdjr-skplugin-meta-injector#readme)
+plugin which has responsibility for writing generated meta data into
+the Signal K data store.
 
 Relay switch bank modules which are to be operated by the plugin must
 respond to NMEA 2000 PGN 127502 (Switch Bank Control) messages.
