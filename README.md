@@ -46,12 +46,11 @@ configuration interface.
 ### Configuring relay operation
 
 A minimal configuration (i.e. one that is sufficient to allow the operation
-of remote relays) need only specify the involved relay switch modules as
-they present in Signal K.
-Most users will probably find it useful for documentation purposes to specify
-all of the switch banks on their N2K system, both relay and switch.
-For example, my ship has two 16-channel switch input modules and four 8-channel
-relay output modules.
+of remote relays) need only specify N2K relay modules, but most users will
+find it convenient for documentation purposes to specify all of their N2K
+switchbank modules, both relay and switch.
+My ship has two 16-channel switch input modules and four 8-channel relay
+output modules and a minimal configuration looks like this:
 ```
 {
   "enabled": true,
