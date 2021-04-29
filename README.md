@@ -5,14 +5,16 @@ Operate N2K relay output switch banks.
 This project implements a plugin for the
 [Signal K Node server](https://github.com/SignalK/signalk-server-node).
 
-__pdjr-skplugin-switchbank__ extends Signal K's native switch bank support by
-providing a mechanism for operating switch bank relay modules (using
-PGN 127502) in response to PUT requests addressed to switch bank paths
-under the plugin's control.
+__pdjr-skplugin-switchbank__ installs a handler on Signal K switch bank
+keys that are associated with channels on remote N2K relay modules.
+The handler processes received PUT requests, issuing PGN 127502 (Switch
+Bank Control) messages to set the remote relay state.
 
 Additionally, the plugin provides a means of automatically generating
-switch state meta data for both switch and relay modules in a form that
-can be consumed by the
+and publishing meta data that describes both switch and relay switch
+bank keys.
+Meta data is published on a user-defined FIFO in a format consistent
+with the requirements of the
 [pdjr-skplugin-meta-injector](https://github.com/preeve9534/pdjr-skplugin-meta-injector#readme)
 plugin.
 
@@ -37,25 +39,44 @@ and installed using
 __pdjr-skplugin-switchbank__ operates autonomously, but must be configured
 before use.
 
-### Basic configuration (no meta data support)
+The plugin configuration is held in ```pdjr-skplugin-switchbank.json```
+which can be edited directly or maintained using the Signal K plugin
+configuration interface.
 
-A minimal configuration of __pdjr-skplugin-switchbank__ supplies just enough
-information for the plugin to respond to PUT requests targetted at
-switch keys which are associated with relay output switch banks.
+### Configuring relay operation
 
-For a vessel with four 8-channel relay output modules this might be
-something as simple as:
+A minimal functional configuration of __pdjr-skplugin-switchbank__
+defines N2K relay output modules by specifying their instance number
+and the number of supported relay channels.
+For example.
 ```
-switchbanks: [
-  { instance: 10, channelcount: 8, type: "relay" }
-  { instance: 26, channelcount: 8, type: "relay" }
-  { instance: 15, channelcount: 8, type: "relay" }
-  { instance: 31, channelcount: 8, type: "relay" }
-]
+{
+  "enabled": true,
+  "enableLogging": false,
+  "configuration": {
+    "metainjectorfifo": "/tmp/meta-injector",
+    "switchbanks": [
+      { "instance": 10, "channelcount": 8, "type": "relay" }
+      { "instance": 26, "channelcount": 8, "type": "relay" }
+      { "instance": 15, "channelcount": 8, "type": "relay" }
+      { "instance": 31, "channelcount": 8, "type": "relay" }
+    ]
+  }
+}
 ```
+A populated "switchbanks" array property is all that is required to bring
+relay output channels under plugin control: issuing a PUT request on any
+of the defined channels will result in operation of the associated remote
+relay via PGN.
 
-The plugin configuration is stored in the file 'switchbank.json' and
-can be maintained using the Signal K plugin configuration GUI.
+In this example, the optional "metainjectorfifo" property allows the plugin
+to issue a minimal, automatically generated, collection of meta data to the
+specified FIFO.
+
+### Supplying more elaborate meta data
+
+
+
 
 The configuration consists of a collection of definitions which map
 Signal K paths into the plugin's NMEA 2000 operating scheme.
