@@ -71,6 +71,9 @@ PUT requests.
 
 ### Enabling metadata output
 
+To inject meta data into the Signal K tree you must run the __pdjr-skplugin-meta-injector__
+plugin which listens on a user-define FIFO port for meta data updates.
+
 Adding a "metainjectorfifo" property to the configuration allows the plugin
 to issue some minimal, automatically generated, meta data via the specified
 FIFO to __pdjr-skplugin-meta-injector__.
@@ -93,8 +96,8 @@ FIFO to __pdjr-skplugin-meta-injector__.
 ```
 This example also illustrates how a "description" property can be added to
 each switch bank definition.
-The supplied value is used by the plugin to make status and error reporting
-more intelligible.
+The "description" property value is used by the plugin to make status and
+error reporting more intelligible.
 
 ### Supplying more elaborate meta data
 
