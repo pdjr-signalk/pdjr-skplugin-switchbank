@@ -8,14 +8,14 @@ This project implements a plugin for the
 __pdjr-skplugin-switchbank__ is a plugin which extends Signal K's support
 for NMEA 2000 switch banks by (i) providing a mechanism for decorating
 switch bank 'state' keys with automatically generated and/or user-supplied
-meta data and (ii) allowing a PUT operation on a switch bank relay channel
-to operate a remote relay using PGN 127502 (Switch Bank Control) messages.
+meta data and (ii) allowing PUT operations on switch bank relay channels
+to operate remote relays using PGN 127502 (Switch Bank Control) messages.
 
 ## System requirements
 
 __pdjr-skplugin-switchbank__ has no special installation requirements.
 
-The meta data support feature relies upon the presence of the
+Adding meta data to switch bank keys relies upon the presence of the
 [pdjr-skplugin-meta-injector](https://github.com/preeve9534/pdjr-skplugin-meta-injector#readme)
 plugin which has responsibility for writing generated meta data into
 the Signal K data store.
@@ -54,7 +54,6 @@ output modules and a minimal configuration looks like this:
   "enabled": true,
   "enableLogging": false,
   "configuration": {
-    "metainjectorfifo": "/tmp/meta-injector",
     "switchbanks": [
       { "instance": 0, "channelcount": 16, "type": "switch" },
       { "instance": 16, "channelcount": 16, "type": "switch" },
@@ -66,63 +65,66 @@ output modules and a minimal configuration looks like this:
   }
 }
 ```
-A populated "switchbanks" array property is all that is required to bring
-relay output channels under plugin control: issuing a PUT request on any
-of the defined relay channels will result in operation of the associated
-remote relay via transmission of PGN 127502 message.
+The presense of a "relay" entry in the "switchbanks" array is all that is
+required to make the specified module's relay outputs operable by Signal K
+PUT requests.
 
-In this example, the optional "metainjectorfifo" property allows the plugin
-to issue a minimal, automatically generated, collection of meta data to the
-specified FIFO.
+### Enabling metadata output
+
+Adding a "metainjectorfifo" property to the configuration allows the plugin
+to issue some minimal, automatically generated, meta data via the specified
+FIFO to __pdjr-skplugin-meta-injector__.
+```
+{
+  "enabled": true,
+  "enableLogging": false,
+  "configuration": {
+    "metainjectorfifo": "/tmp/meta-injector",
+    "switchbanks": [
+      { "instance": 0,  "channelcount": 16, "type": "switch", "description": "Helm switch input" },
+      { "instance": 16, "channelcount": 16, "type": "switch"  "description": "Domestic panel switch input" },
+      { "instance": 10, "channelcount": 8,  "type": "relay"   "description": "Engine room relay bank 1" },
+      { "instance": 26, "channelcount": 8,  "type": "relay"   "description": "Engine room relay bank 2" },
+      { "instance": 15, "channelcount": 8,  "type": "relay"   "description": "Forecabin relay bank 1" },
+      { "instance": 31, "channelcount": 8,  "type": "relay"   "description": "Forecabin relay bank 2" }
+    ]
+  }
+}
+```
+This example also illustrates how a "description" property can be added to
+each switch bank definition.
+The supplied value is used by the plugin to make status and error reporting
+more intelligible.
 
 ### Supplying more elaborate meta data
 
+A "channels" array property containing a collection of channel meta data
+objects can be added to each switch bank definition.
+Each object should include "index" and "description" properties which
+identify and describe a channel: te supplied description is added to the
+meta data issued by the plugin.
 
+The following example illustrates how this feature might be used to extend
+a switchbank configuration.
 
-
-The configuration consists of a collection of definitions which map
-Signal K paths into the plugin's NMEA 2000 operating scheme.
-Definitions for switch input modules are optional (the data supplied is
-only used for maintenance of switch channel meta values), but
-definitions must be provided for any relay output modules that you
-expect __pdjr-skplugin-switchbank__ to operate. 
-
-__Switch bank definitions__ [pdjr-skplugin-switchbanks]\
-This array property contains a collection of *switchbank definitions*
-each of which defines either a switch or a relay switchbank.
-Each pdjr-skplugin-switchbank definition has the following properties.
-
-__Switch bank instance__[instance]\
-This number property specifies the instance number of the NMEA switch
-bank to which this definition applies.
-
-__Switch bank type__[type]\
-This string property specifies whether the switch bank is a switch
-input module or a relay output module.
-
-__Switch bank description__ [description]\
-This string property can be used to give the switch bank a meaningful,
-human-readable description which can be used by the plugin for status
-and error reporting.
-
-__Switch bank channels__ [channels]\
-This array property contains a collection of *channel definitions*
-each of which defines the channels which make up the switch bank being
-defined.
-Each channel definition has the following properties.
-
-__Channel index__ [index]\
-This number property uniquely identifies a channel within the switch
-bank (the first channel should have an index of one not zero).
-
-__Channel description__ [description]\
-This string property can be used to give the switch bank channel a
-meaningful, human-readable description which can be used by the plugin
-to add meta information to the associated Signal K path.
-
-## Debugging and logging
-
-The plugin understands the 'switchbank' debug key.
+```
+...
+    "switchbanks": [
+      {
+        "instance": 0,
+        "channelcount": 16,
+        "type": "switch",
+        "description": "Helm switch input",
+        "channels": [
+          { "index": 1, "description": "Navigation lights" },
+          { "index": 2, "description": "Anchor light" },
+          ...
+        ]
+      },
+      ...
+    ]
+...
+```
 
 ## Author
 
