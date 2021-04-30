@@ -1,7 +1,7 @@
 {
   "name": "pdjr-skplugin-switchbank",
-  "version": "1.0.0",
-  "description": "Operate N2K relay output switch banks.",
+  "version": "2.0.0",
+  "description": "Extend support for NMEA2000 switchbanks.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -15,7 +15,8 @@
     "signalk",
     "pdjr-skplugin-switchbank",
     "plugin",
-    "NMEA"
+    "NMEA",
+    "127502"
   ],
   "author": "Paul Reeve <preeve@pdjr.eu>",
   "license": "Apache-2.0",
