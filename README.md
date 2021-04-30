@@ -131,5 +131,5 @@ a switchbank configuration.
 
 ## Author
 
-Paul Reeve <preeve@pdjr.eu>\
+Paul Reeve \<preeve@pdjr.eu\>\
 October 2020
