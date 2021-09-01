@@ -150,7 +150,8 @@ module.exports = function(app) {
       value = (value & 0x01);
       buffer[parts[4] - 1] = value;
       message = Nmea2000.makeMessagePGN127502(parts[3], buffer);
-      app.emit('nmea2000out', message); app.emit('nmea2000out', message);
+      app.emit('nmea2000out', message);
+      app.emit('nmea2000out', message);
       log.N("transmitting NMEA message '%s'", message);
     } else {
       log.E("invalid value (%s) in put request", value);
