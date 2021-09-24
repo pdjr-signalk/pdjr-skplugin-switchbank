@@ -21,6 +21,10 @@ const Log = require("./lib/signalk-liblog/Log.js");
 const Schema = require("./lib/signalk-libschema/Schema.js");
 const Nmea2000 = require("./lib/signalk-libnmea2000/Nmea2000.js");
 
+const PLUGIN_ID = "switchbank";
+const PLUGIN_NAME = "N2K switch bank interface";
+const PLUGIN_DESCRIPTION = "N2K switch bank interface";
+
 const PLUGIN_SCHEMA_FILE = __dirname + "/schema.json";
 const PLUGIN_UISCHEMA_FILE = __dirname + "/uischema.json";
 
@@ -29,9 +33,9 @@ module.exports = function(app) {
   var unsubscribes = [];
   var switchbanks = {};
 
-  plugin.id = "pdjr-skplugin-switchbank";
-  plugin.name = "N2K switch bank interface";
-  plugin.description = "Operate N2K relay output switch banks.";
+  plugin.id = PLUGIN_ID;
+  plugin.name = PLUGIN_NAME;
+  plugin.description = PLUGIN_DESCRIPTION;
 
   const log = new Log(plugin.id, { ncallback: app.setPluginStatus, ecallback: app.setPluginError });
 
@@ -46,85 +50,67 @@ module.exports = function(app) {
   }
 
   plugin.start = function(options) {
-    log.N("operating %d switch banks (%d relay banks)", options.switchbanks.length, options.switchbanks.filter(sb => (sb.type == "relay")).length);
+    var channelCount = 0;
 
+    if (options) {
+      if (options.switchbanks) {
+        channelCount = options.switchbanks.reduce((a,sb) => { return(a + ((sb.channels)?sb.channels.length:0)); }, 0);
+        if (channelCount) {
+          log.N("Processing %d channel%s in %d switch bank%s", channelCount, ((channelCount == 1)?"":"s"), options.switchbanks.length, (options.switchbanks.length == 1)?"":"s");
 
-    /******************************************************************
-     * If options.metainjectorfifo is defined then harvest documentary
-     * data from any defined switchbanks and write it to metadata
-     * injector service on the defined FIFO.
-     */
+          /******************************************************************
+           * If options.metainjectorfifo is defined then harvest documentary
+           * data from any defined switchbanks and write it to metadata
+           * injector service on the defined FIFO.
+           */
 
-    if (options.metainjectorfifo) {
-      if (fs.existsSync(options.metainjectorfifo)) {
-        var metadata = [];
-        options.switchbanks.forEach(switchbank => {
-          if (switchbank.description) {
-            //metadata.push({ key: "electrical.switches.bank.", description: "Instance number of N2K switchbank (range 0 - 254)" }); 
-            //metadata.push({ key: "electrical.switches.bank." + switchbank.instance, description: switchbank.description });
+          if (options.metainjectorfifo) {
+            if (fs.existsSync(options.metainjectorfifo)) {
+              var recordsOut = exportMetadata(options.metainjectorfifo, options.switchbanks);
+              log.N("%d metadata records sent to injector service at '%s'", recordsOut, options.metainjectorfifo);
+            } else {
+              log.N("skipping meta data output because configured FIFO (%s) does not exist", options.metainjectorfifo);
+            }
+          } else {
+            log.N("skipping meta data output because FIFO is not configured");
           }
-          if (switchbank.channels) {
-            switchbank.channels.forEach(channel => {
-              var meta = {
-                key: "electrical.switches.bank." + switchbank.instance + "." + channel.index + ".state",
-                description: "Binary " + switchbank.type + " state (0 = OFF, 1 = ON)",
-                type: switchbank.type
-              };
-              meta.shortName = "[" + switchbank.instance + "," + channel.index + "]"
-              meta.displayName = channel.description || meta.shortName;
-              meta.longName = meta.displayName + " " + meta.shortName;
-              meta.timeout = 10000;
-              metadata.push(meta);
-            });
-          }
-        });
-        if (metadata.length) {
-          var client = new net.Socket();
-          client.connect(options.metainjectorfifo);
-          client.on('connect', () => {
-            log.N("sending %d metadata keys to injector service at '%s'", metadata.length, options.metainjectorfifo);
-            client.write(JSON.stringify(metadata));
-            client.end();
+
+
+          /******************************************************************
+           * NMEA switchbanks are updated with aggregate state information
+           * for every contained channel. Consequently, we need to keep track
+           * of relay switchbank channel states so that we can easily make an
+           * update message when we need to.
+           */
+
+          options.switchbanks.filter(sb => (sb.type == "relay")).forEach(switchbank => {
+            let instance = switchbank.instance; 
+            var maxindex = switchbank.channelcount;
+            app.debug("creating relay state model for switchbank %d (%d channels)", instance, maxindex); 
+            switchbanks[instance] = (new Array(maxindex)).fill(undefined);
+            for (var i = 1; i <= maxindex; i++) {
+              let channel = i;
+              let stream = app.streambundle.getSelfStream("electrical.switches.bank." + instance + "." + channel + ".state");
+              if (stream) stream.filter((v) => ((!isNaN(v)) && ((v === 0) || (v === 1)))).skipDuplicates().onValue(v => {
+                switchbanks[instance][channel - 1] = v;
+                app.debug("updating relay state model [%d,%d] = %d", instance, channel, v);
+              });
+            }
+          });
+
+          /******************************************************************
+           * Register a put handler for all switch bank relay channels.
+           */
+
+          options.switchbanks.filter(sb => (sb.type == "relay")).forEach(sb => {
+            for (var ch = 1; ch <= sb.channelcount; ch++) {
+              var path = "electrical.switches.bank." + sb.instance + "." + ch + ".state";
+              app.registerPutHandler('vessels.self', path, actionHandler, plugin.id);
+            }
           });
         }
-      } else {
-        log.E("meta injector FIFO (%s) does not exist", options.metainjectorfifo);
       }
     }
-    
-    /******************************************************************
-     * NMEA switchbanks are updated with aggregate state information
-     * for every contained channel. Consequently, we need to keep track
-     * of relay switchbank channel states so that we can easily make an
-     * update message when we need to.
-     */
-
-    options.switchbanks.filter(sb => (sb.type == "relay")).forEach(switchbank => {
-      let instance = switchbank.instance; 
-      var maxindex = switchbank.channelcount;
-      app.debug("creating relay state model for switchbank %d (%d channels)", instance, maxindex); 
-      switchbanks[instance] = (new Array(maxindex)).fill(undefined);
-      for (var i = 1; i <= maxindex; i++) {
-        let channel = i;
-        let stream = app.streambundle.getSelfStream("electrical.switches.bank." + instance + "." + channel + ".state");
-        if (stream) stream.filter((v) => ((!isNaN(v)) && ((v === 0) || (v === 1)))).skipDuplicates().onValue(v => {
-          switchbanks[instance][channel - 1] = v;
-          app.debug("updating relay state model [%d,%d] = %d", instance, channel, v);
-        });
-      }
-    });
-
-    /******************************************************************
-     * Register a put handler for all switch bank relay channels.
-     */
-
-    options.switchbanks.filter(sb => (sb.type == "relay")).forEach(sb => {
-      for (var ch = 1; ch <= sb.channelcount; ch++) {
-        var path = "electrical.switches.bank." + sb.instance + "." + ch + ".state";
-        app.registerPutHandler('vessels.self', path, actionHandler, plugin.id);
-      }
-    });
-
   }
 
   plugin.stop = function() {
@@ -132,6 +118,35 @@ module.exports = function(app) {
 	unsubscribes = [];
   }
 
+  function exportMetadata(fifo, switchbanks) {  
+    var metadata = [];
+    switchbanks.forEach(switchbank => {
+      if (switchbank.channels) {
+        switchbank.channels.forEach(channel => {
+          var meta = {
+            key: "electrical.switches.bank." + switchbank.instance + "." + channel.index + ".state",
+            description: "Binary " + switchbank.type + " state (0 = OFF, 1 = ON)",
+            type: switchbank.type
+          };
+          meta.shortName = "[" + switchbank.instance + "," + channel.index + "]"
+          meta.displayName = channel.description || meta.shortName;
+          meta.longName = meta.displayName + " " + meta.shortName;
+          meta.timeout = 10000;
+          metadata.push(meta);
+        });
+      }
+    });
+    if (metadata.length) {
+      var client = new net.Socket();
+      client.connect(fifo);
+      client.on('connect', () => {
+        client.write(JSON.stringify(metadata));
+        client.end();
+      });
+    }
+    return(metadata.length);
+  }
+    
   /********************************************************************
    * Process a put request for switchbank state change. Signal K does
     not pass a handle to the request source and since we want to
