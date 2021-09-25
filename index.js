@@ -75,29 +75,6 @@ module.exports = function(app) {
             log.N("skipping meta data output because FIFO is not configured");
           }
 
-
-          /******************************************************************
-           * NMEA switchbanks are updated with aggregate state information
-           * for every contained channel. Consequently, we need to keep track
-           * of relay switchbank channel states so that we can easily make an
-           * update message when we need to.
-           */
-
-          options.switchbanks.filter(sb => (sb.type == "relay")).forEach(switchbank => {
-            let instance = switchbank.instance; 
-            var maxindex = switchbank.channelcount;
-            app.debug("creating relay state model for switchbank %d (%d channels)", instance, maxindex); 
-            switchbanks[instance] = (new Array(maxindex)).fill(undefined);
-            for (var i = 1; i <= maxindex; i++) {
-              let channel = i;
-              let stream = app.streambundle.getSelfStream("electrical.switches.bank." + instance + "." + channel + ".state");
-              if (stream) stream.filter((v) => ((!isNaN(v)) && ((v === 0) || (v === 1)))).skipDuplicates().onValue(v => {
-                switchbanks[instance][channel - 1] = v;
-                app.debug("updating relay state model [%d,%d] = %d", instance, channel, v);
-              });
-            }
-          });
-
           /******************************************************************
            * Register a put handler for all switch bank relay channels.
            */
@@ -160,19 +137,20 @@ module.exports = function(app) {
   function actionHandler(context, path, value, callback) {
     app.debug("processing put request (path = %s, value = %s)", path, value);
     var parts = path.split('.') || [];
-    var buffer = Array.from(switchbanks[parts[3]]).map(v => (v === undefined)?0:v);
-    if ((!isNaN(value)) && ((value === 0) || (value === 1) || (value === 2) || (value === 3))) {
-      value = (value & 0x01);
-      buffer[parts[4] - 1] = value;
-      message = Nmea2000.makeMessagePGN127502(parts[3], buffer);
+    if (((!isNaN(parts[3])) && (!isNaN(parts[4])) && (!isNaN(value))) // instance, channel and value are numeric
+    && ((parts[3] >= 0) && (parts[3] <= 0xFE)) // instance is valid (in range 0..254)
+    && ((parts[4] >= 1) && (parts[4] <= 28)) // channel is valid (in range 1..28)
+    && ((value === 0) || (value === 1) || (value === 2) || (value === 3))) { // value is valid
+      message = Nmea2000.makeMessagePGN127502(parts[3], (parts[4] - 1), value);
       app.emit('nmea2000out', message);
-      app.emit('nmea2000out', message);
+      // app.emit('nmea2000out', message);
       log.N("transmitting NMEA message '%s'", message);
     } else {
-      log.E("invalid value (%s) in put request", value);
+      log.E("ignoring invalid put request");
     }
     return({ state: 'COMPLETED', statusCode: 200 });
   }
 
+  
   return(plugin);
 }
