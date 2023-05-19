@@ -105,10 +105,11 @@ module.exports = function(app) {
 
   plugin.start = function(options) {
     const log = new Log(plugin.id, { ncallback: app.setPluginStatus, ecallback: app.setPluginError });
-    var delta = new Delta(app, plugin.id);
+    const delta = new Delta(app, plugin.id);
 
     if (options) {
 
+      // Tidy up the plugin configuration and save and changes to disk.
       var updateConfiguration = false;
       if (!options.root) { options.root = OPTIONS_ROOT_DEFAULT; updateConfiguration = true; }
       if (!options.switchbanks) { options.switchbanks = OPTIONS_SWITCHBANKS_DEFAULT; updateConfiguration = true; }
@@ -116,21 +117,36 @@ module.exports = function(app) {
 
       
       var channelCount = options.switchbanks.reduce((a,sb) => { return(a + ((sb.channels)?sb.channels.length:0)); }, 0);
-      if (channelCount) {
-        log.N("processing %d channel%s in %d switch bank%s", channelCount, ((channelCount == 1)?"":"s"), options.switchbanks.length, (options.switchbanks.length == 1)?"":"s");
+      log.N("processing %d channel%s in %d switch bank%s", channelCount, ((channelCount == 1)?"":"s"), options.switchbanks.length, (options.switchbanks.length == 1)?"":"s");
 
-        // Publish meta information for all maintained keys.
-        delta.addValues(getMetadata(options.root, options.switchbanks));
-        delta.commit().clear();
+      // Publish meta information for all maintained keys.
+      delta.addValues(options.switchbanks.reduce((a,sb) => {
+        if (sb.channels) {
+          sb.channels.forEach(channel => {
+            a.push({
+              "path": options.root + sb.instance + "." + channel.index + ".state",
+              "value": {
+                "description": "Binary " + sb.type + " state (0 = OFF, 1 = ON)",
+                "type": sb.type,
+                "shortName": "[" + sb.instance + "," + channel.index + "]",
+                "displayName": channel.description || ("[" + sb.instance + "," + channel.index + "]"),
+                "longName": channel.description || ("[" + sb.instance + "," + channel.index + "]") + " " + "[" + sb.instance + "," + channel.index + "]",
+                "timeout": 10000;
+              }
+            });
+          });
+        }
+        return(a);
+      }, []));
+      delta.commit().clear();
 
-        // Register a put handler for all switch bank relay channels.
-        options.switchbanks.filter(sb => (sb.type == "relay")).forEach(sb => {
-          for (var ch = 1; ch <= sb.channelcount; ch++) {
-            var path = "electrical.switches.bank." + sb.instance + "." + ch + ".state";
-            app.registerPutHandler('vessels.self', path, actionHandler, plugin.id);
-          }
-        });
-      }
+      // Register a put handler for all switch bank relay channels.
+      options.switchbanks.filter(sb => (sb.type == "relay")).forEach(sb => {
+        for (var ch = 1; ch <= sb.channelcount; ch++) {
+          var path = options.root + sb.instance + "." + ch + ".state";
+          app.registerPutHandler('vessels.self', path, actionHandler, plugin.id);
+        }
+      });
     }
   }
 
@@ -140,43 +156,20 @@ module.exports = function(app) {
   }
 
   /**
-   *
-   * @param {*} root 
-   * @param {*} switchbanks 
-   * @returns 
-   */
-  function getMetadata(root, switchbanks) {  
-    var retval = [];
-    switchbanks.forEach(switchbank => {
-      if (switchbank.channels) {
-        switchbank.channels.forEach(channel => {
-          retval.push({
-            "path": root + switchbank.instance + "." + channel.index + ".state",
-            "value": {
-              "description": "Binary " + switchbank.type + " state (0 = OFF, 1 = ON)",
-              "type": switchbank.type,
-              "shortName": "[" + switchbank.instance + "," + channel.index + "]",
-              "displayName": channel.description || ("[" + switchbank.instance + "," + channel.index + "]"),
-              "longName": channel.description || ("[" + switchbank.instance + "," + channel.index + "]") + " " + meta.shortName,
-              "timeout": 10000;
-            }
-          });
-        });
-      }
-    });
-    return(retval);
-  }  
-    
-  /********************************************************************
    * Process a put request for switchbank state change. Signal K does
-    not pass a handle to the request source and since we want to
+   * not pass a handle to the request source and since we want to
    * process requests emanating from physical switches differently to
    * requests emanating from virtual devices, we need a work-around.
    *
    * So, we extend what constitutes a value (normally 0 or 1) to allow
    * values 2 and 3 for virtual OFF and ON.
+   * 
+   * @param {*} context 
+   * @param {*} path 
+   * @param {*} value 
+   * @param {*} callback 
+   * @returns 
    */
-  
   function actionHandler(context, path, value, callback) {
     app.debug("processing put request (path = %s, value = %s)", path, value);
     var parts = path.split('.') || [];
@@ -194,6 +187,5 @@ module.exports = function(app) {
     return({ state: 'COMPLETED', statusCode: 200 });
   }
 
-  
   return(plugin);
 }
