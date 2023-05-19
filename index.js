@@ -14,9 +14,6 @@
  * permissions and limitations under the License.
  */
 
-const net = require('net');
-const fs = require('fs');
-
 const Delta = require("./lib/signalk-libdelta/Delta.js");
 const Log = require("./lib/signalk-liblog/Log.js");
 const Nmea2000 = require("./lib/signalk-libnmea2000/Nmea2000.js");
@@ -93,7 +90,6 @@ const OPTIONS_SWITCHBANKS_DEFAULT = [];
 module.exports = function(app) {
   var plugin = {};
   var unsubscribes = [];
-  var switchbanks = {};
 
   plugin.id = PLUGIN_ID;
   plugin.name = PLUGIN_NAME;
@@ -102,10 +98,9 @@ module.exports = function(app) {
   plugin.uiSchema = PLUGIN_UISCHEMA;
 
   const log = new Log(plugin.id, { ncallback: app.setPluginStatus, ecallback: app.setPluginError });
+  const delta = new Delta(app, plugin.id);
 
   plugin.start = function(options) {
-    const log = new Log(plugin.id, { ncallback: app.setPluginStatus, ecallback: app.setPluginError });
-    const delta = new Delta(app, plugin.id);
 
     if (options) {
 
