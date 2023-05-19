@@ -28,10 +28,6 @@ const PLUGIN_SCHEMA = {
       "title": "Root path under which switchbank keys will be inserted",
       "type": "string"
     },
-    "metainjectorfifo": {
-      "description": "Unix FIFO used to access a metadata injector service",
-      "type": "string", "default": "/tmp/meta-injector", "title": "FIFO path for meta injector service"
-    },
     "switchbanks" : {
       "title": "Switch bank definitions",
       "type": "array",
@@ -84,8 +80,10 @@ const PLUGIN_SCHEMA = {
 };
 const PLUGIN_UISCHEMA = {};
 
-const OPTIONS_ROOT_DEFAULT = "electrical.switches.bank.";
-const OPTIONS_SWITCHBANKS_DEFAULT = [];
+const OPTIONS_DEFAULT = {
+  "root": "electrical.switches.bank.",
+  "switchbanks": []
+};
 
 module.exports = function(app) {
   var plugin = {};
@@ -102,21 +100,19 @@ module.exports = function(app) {
 
   plugin.start = function(options) {
 
-    if (options) {
+    if (Object.keys(options).length === 0) {
+      options = OPTIONS_DEFAULT;
+      app.savePluginOptions(options, () => log.N("using default options and saving them to disk", false));
+    }
 
-      // Tidy up the plugin configuration and save and changes to disk.
-      var updateConfiguration = false;
-      if (!options.root) { options.root = OPTIONS_ROOT_DEFAULT; updateConfiguration = true; }
-      if (!options.switchbanks) { options.switchbanks = OPTIONS_SWITCHBANKS_DEFAULT; updateConfiguration = true; }
-      if (updateConfiguration) app.savePluginOptions(options, () => { log.N("updated configuration file on disk"); });
-
+    if ((options.root) && (options.switchbanks.length !== 0)) {
       
       var channelCount = options.switchbanks.reduce((a,sb) => { return(a + ((sb.channels)?sb.channels.length:0)); }, 0);
       log.N("processing %d channel%s in %d switch bank%s", channelCount, ((channelCount == 1)?"":"s"), options.switchbanks.length, (options.switchbanks.length == 1)?"":"s");
 
       // Publish meta information for all maintained keys.
       delta.addValues(options.switchbanks.reduce((a,sb) => {
-        if (sb.channels) {
+        if (sb.channels.length !== 0) {
           sb.channels.forEach(channel => {
             a.push({
               "path": options.root + sb.instance + "." + channel.index + ".state",
@@ -142,6 +138,8 @@ module.exports = function(app) {
           app.registerPutHandler('vessels.self', path, actionHandler, plugin.id);
         }
       });
+    } else {
+      log.W("no switchbanks are configured");
     }
   }
 
