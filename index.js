@@ -102,7 +102,11 @@ module.exports = function(app) {
 
     if (Object.keys(options).length === 0) {
       options = OPTIONS_DEFAULT;
-      app.savePluginOptions(options, () => log.N("using default options and saving them to disk", false));
+      app.savePluginOptions(options, () => log.N("using default configuration and saving it to disk", false));
+    } else {
+      if (!options.hasOwnProperty("root")) options.root = OPTIONS_DEFAULT.root;
+      delete options.metainjectorfifo;
+      app.savePluginOptions(options, () => log.N("updating legacy configuration and saving it to disk", false));
     }
 
     if ((options.root) && (options.switchbanks.length !== 0)) {
