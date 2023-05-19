@@ -16,17 +16,79 @@
 
 const net = require('net');
 const fs = require('fs');
+
 const Delta = require("./lib/signalk-libdelta/Delta.js");
 const Log = require("./lib/signalk-liblog/Log.js");
-const Schema = require("./lib/signalk-libschema/Schema.js");
 const Nmea2000 = require("./lib/signalk-libnmea2000/Nmea2000.js");
 
 const PLUGIN_ID = "switchbank";
-const PLUGIN_NAME = "N2K switch bank interface";
-const PLUGIN_DESCRIPTION = "N2K switch bank interface";
+const PLUGIN_NAME = "pdjr-skplugin-switchbank";
+const PLUGIN_DESCRIPTION = "N2K switchbank interface";
+const PLUGIN_SCHEMA = {
+  "type": "object",
+  "properties": {
+    "root": {
+      "title": "Root path under which switchbank keys will be inserted",
+      "type": "string"
+    },
+    "metainjectorfifo": {
+      "description": "Unix FIFO used to access a metadata injector service",
+      "type": "string", "default": "/tmp/meta-injector", "title": "FIFO path for meta injector service"
+    },
+    "switchbanks" : {
+      "title": "Switch bank definitions",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": [ "instance", "channelcount" ],
+        "properties": {
+          "instance": {
+            "description": "NMEA 2000 switchbank instance number",
+            "type": "number", "default": 0, "title": "Switch bank instance"
+          },
+          "type": {
+            "description": "Whether this switchbanks is a switch input module or a relay output module",
+            "type": "string", "default": "relay", "enum": [ "switch", "relay" ], "title": "Switch bank type"
+          },
+          "channelcount": {
+            "description": "Number of channels supported by the module",
+            "type": "number", "default": 8, "title": "Number of supported channels"
+          },
+          "description": {
+            "description": "Narrative describing the module (serial no, intall location, etc)",
+            "type": "string", "default": "", "title": "Switch bank description"
+          },
+          "channels": {
+            "title": "Switch bank channels",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [ "index" ],
+              "properties": {
+                "index": {
+                  "title": "Channel index",
+                  "type": "number",
+                  "default": 1
+                },
+                "description": {
+                  "title": "Channel description",
+                  "type": "string",
+                  "default": ""
+                }
+              }
+            },
+            "default": []
+          }
+        }
+      }
+    }
+  }
+};
+const PLUGIN_UISCHEMA = {};
 
-const PLUGIN_SCHEMA_FILE = __dirname + "/schema.json";
-const PLUGIN_UISCHEMA_FILE = __dirname + "/uischema.json";
+const OPTIONS_ROOT_DEFAULT = "electrical.switches.bank.";
+const OPTIONS_SWITCHBANKS_DEFAULT = [];
 
 module.exports = function(app) {
   var plugin = {};
@@ -36,93 +98,74 @@ module.exports = function(app) {
   plugin.id = PLUGIN_ID;
   plugin.name = PLUGIN_NAME;
   plugin.description = PLUGIN_DESCRIPTION;
+  plugin.schema = PLUGIN_SCHEMA;
+  plugin.uiSchema = PLUGIN_UISCHEMA;
 
   const log = new Log(plugin.id, { ncallback: app.setPluginStatus, ecallback: app.setPluginError });
 
-  plugin.schema = function() {
-    var schema = Schema.createSchema(PLUGIN_SCHEMA_FILE);
-    return(schema.getSchema());
-  };
-
-  plugin.uiSchema = function() {
-    var schema = Schema.createSchema(PLUGIN_UISCHEMA_FILE);
-    return(schema.getSchema());
-  }
-
   plugin.start = function(options) {
-    var channelCount = 0;
+    const log = new Log(plugin.id, { ncallback: app.setPluginStatus, ecallback: app.setPluginError });
+    var delta = new Delta(app, plugin.id);
 
     if (options) {
-      if (options.switchbanks) {
-        channelCount = options.switchbanks.reduce((a,sb) => { return(a + ((sb.channels)?sb.channels.length:0)); }, 0);
-        if (channelCount) {
-          log.N("Processing %d channel%s in %d switch bank%s", channelCount, ((channelCount == 1)?"":"s"), options.switchbanks.length, (options.switchbanks.length == 1)?"":"s");
 
-          /******************************************************************
-           * If options.metainjectorfifo is defined then harvest documentary
-           * data from any defined switchbanks and write it to metadata
-           * injector service on the defined FIFO.
-           */
+      var updateConfiguration = false;
+      if (!options.root) { options.root = OPTIONS_ROOT_DEFAULT; updateConfiguration = true; }
+      if (!options.switchbanks) { options.switchbanks = OPTIONS_SWITCHBANKS_DEFAULT; updateConfiguration = true; }
+      if (updateConfiguration) app.savePluginOptions(options, () => { log.N("updated configuration file on disk"); });
 
-          if (options.metainjectorfifo) {
-            if (fs.existsSync(options.metainjectorfifo)) {
-              var recordsOut = exportMetadata(options.metainjectorfifo, options.switchbanks);
-              log.N("%d metadata records sent to injector service at '%s'", recordsOut, options.metainjectorfifo);
-            } else {
-              log.N("skipping meta data output because configured FIFO (%s) does not exist", options.metainjectorfifo);
-            }
-          } else {
-            log.N("skipping meta data output because FIFO is not configured");
+      
+      var channelCount = options.switchbanks.reduce((a,sb) => { return(a + ((sb.channels)?sb.channels.length:0)); }, 0);
+      if (channelCount) {
+        log.N("processing %d channel%s in %d switch bank%s", channelCount, ((channelCount == 1)?"":"s"), options.switchbanks.length, (options.switchbanks.length == 1)?"":"s");
+
+        // Publish meta information for all maintained keys.
+        delta.addValues(getMetadata(options.root, options.switchbanks));
+        delta.commit().clear();
+
+        // Register a put handler for all switch bank relay channels.
+        options.switchbanks.filter(sb => (sb.type == "relay")).forEach(sb => {
+          for (var ch = 1; ch <= sb.channelcount; ch++) {
+            var path = "electrical.switches.bank." + sb.instance + "." + ch + ".state";
+            app.registerPutHandler('vessels.self', path, actionHandler, plugin.id);
           }
-
-          /******************************************************************
-           * Register a put handler for all switch bank relay channels.
-           */
-
-          options.switchbanks.filter(sb => (sb.type == "relay")).forEach(sb => {
-            for (var ch = 1; ch <= sb.channelcount; ch++) {
-              var path = "electrical.switches.bank." + sb.instance + "." + ch + ".state";
-              app.registerPutHandler('vessels.self', path, actionHandler, plugin.id);
-            }
-          });
-        }
+        });
       }
     }
   }
 
   plugin.stop = function() {
-	unsubscribes.forEach(f => f());
-	unsubscribes = [];
+	  unsubscribes.forEach(f => f());
+	  unsubscribes = [];
   }
 
-  function exportMetadata(fifo, switchbanks) {  
-    var metadata = [];
+  /**
+   *
+   * @param {*} root 
+   * @param {*} switchbanks 
+   * @returns 
+   */
+  function getMetadata(root, switchbanks) {  
+    var retval = [];
     switchbanks.forEach(switchbank => {
       if (switchbank.channels) {
         switchbank.channels.forEach(channel => {
-          var meta = {
-            key: "electrical.switches.bank." + switchbank.instance + "." + channel.index + ".state",
-            description: "Binary " + switchbank.type + " state (0 = OFF, 1 = ON)",
-            type: switchbank.type
-          };
-          meta.shortName = "[" + switchbank.instance + "," + channel.index + "]"
-          meta.displayName = channel.description || meta.shortName;
-          meta.longName = meta.displayName + " " + meta.shortName;
-          meta.timeout = 10000;
-          metadata.push(meta);
+          retval.push({
+            "path": root + switchbank.instance + "." + channel.index + ".state",
+            "value": {
+              "description": "Binary " + switchbank.type + " state (0 = OFF, 1 = ON)",
+              "type": switchbank.type,
+              "shortName": "[" + switchbank.instance + "," + channel.index + "]",
+              "displayName": channel.description || ("[" + switchbank.instance + "," + channel.index + "]"),
+              "longName": channel.description || ("[" + switchbank.instance + "," + channel.index + "]") + " " + meta.shortName,
+              "timeout": 10000;
+            }
+          });
         });
       }
     });
-    if (metadata.length) {
-      var client = new net.Socket();
-      client.connect(fifo);
-      client.on('connect', () => {
-        client.write(JSON.stringify(metadata));
-        client.end();
-      });
-    }
-    return(metadata.length);
-  }
+    return(retval);
+  }  
     
   /********************************************************************
    * Process a put request for switchbank state change. Signal K does
