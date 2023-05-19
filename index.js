@@ -115,7 +115,7 @@ module.exports = function(app) {
       log.N("processing %d channel%s in %d switch bank%s", channelCount, ((channelCount == 1)?"":"s"), options.switchbanks.length, (options.switchbanks.length == 1)?"":"s");
 
       // Publish meta information for all maintained keys.
-      delta.addValues(options.switchbanks.reduce((a,sb) => {
+      delta.addMetas(options.switchbanks.reduce((a,sb) => {
         if (sb.channels.length !== 0) {
           sb.channels.forEach(channel => {
             a.push({
