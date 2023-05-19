@@ -126,7 +126,7 @@ module.exports = function(app) {
                 "shortName": "[" + sb.instance + "," + channel.index + "]",
                 "displayName": channel.description || ("[" + sb.instance + "," + channel.index + "]"),
                 "longName": channel.description || ("[" + sb.instance + "," + channel.index + "]") + " " + "[" + sb.instance + "," + channel.index + "]",
-                "timeout": 10000;
+                "timeout": 10000
               }
             });
           });
