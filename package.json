@@ -3,27 +3,26 @@
   "version": "2.0.0",
   "description": "Extend support for NMEA2000 switchbanks.",
   "main": "index.js",
+  "signalk-plugin-enabled-by-default": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/preeve9534/pdjr-skplugin-switchbank.git"
+    "url": "git+https://github.com/pdjr-signalk/pdjr-skplugin-switchbank.git"
   },
   "keywords": [
     "signalk-node-server-plugin",
-    "signalk",
-    "pdjr-skplugin-switchbank",
-    "plugin",
-    "NMEA",
-    "127502"
+    "signalk-category-digital-switching",
+    "signalk-category-nmea-2000",
+    "signalk-category-utility"
   ],
   "author": "Paul Reeve <preeve@pdjr.eu>",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/preeve9534/pdjr-skplugin-switchbank/issues"
+    "url": "https://github.com/pdjr-signalk/pdjr-skplugin-switchbank/issues"
   },
-  "homepage": "https://github.com/preeve9534/pdjr-skplugin-switchbank#readme",
+  "homepage": "https://github.com/pdjr-signalk/pdjr-skplugin-switchbank#readme",
   "dependencies": {
     "baconjs": "^1.0.1",
     "debug": "^4.2.0",
