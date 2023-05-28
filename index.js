@@ -101,14 +101,8 @@ module.exports = function(app) {
   plugin.start = function(options) {
 
     if (Object.keys(options).length === 0) {
+      log.N("plugin configuration file missing or broken", false);
       options = OPTIONS_DEFAULT;
-      app.savePluginOptions(options, () => log.N("using default configuration and saving it to disk", false));
-    } else {
-      if (!options.hasOwnProperty("root")) {
-        options.root = OPTIONS_DEFAULT.root;
-        delete options.metainjectorfifo;
-        app.savePluginOptions(options, () => log.N("updating legacy configuration and saving it to disk", false));
-      }
     }
 
     if ((options.root) && (options.switchbanks.length !== 0)) {
@@ -117,32 +111,30 @@ module.exports = function(app) {
       log.N("processing %d channel%s in %d switch bank%s", channelCount, ((channelCount == 1)?"":"s"), options.switchbanks.length, (options.switchbanks.length == 1)?"":"s");
 
       // Publish meta information for all maintained keys.
-      delta.addMetas(options.switchbanks.reduce((a,sb) => {
-        if (sb.channels.length !== 0) {
-          sb.channels.forEach(channel => {
-            a.push({
-              "path": options.root + sb.instance + "." + channel.index + ".state",
-              "value": {
-                "description": "Binary " + sb.type + " state (0 = OFF, 1 = ON)",
-                "type": sb.type,
-                "shortName": "[" + sb.instance + "," + channel.index + "]",
-                "displayName": channel.description || ("[" + sb.instance + "," + channel.index + "]"),
-                "longName": channel.description || ("[" + sb.instance + "," + channel.index + "]") + " " + "[" + sb.instance + "," + channel.index + "]",
-                "timeout": 10000
-              }
-            });
-          });
-        }
-        return(a);
-      }, []));
+      options.switchbanks.forEach(switchbank => {
+        switchbank.channels.forEach(channel => {
+          var path = options.root + switchbank.instance + "." + channel.index + ".state";
+          var value = {
+            "description": "Binary " + switchbank.type + " state (0 = OFF, 1 = ON)",
+            "type": switchbank.type,
+            "shortName": "[" + switchbank.instance + "," + channel.index + "]",
+            "displayName": channel.description || ("[" + switchbank.instance + "," + channel.index + "]"),
+            "longName": channel.description || ("[" + switchbank.instance + "," + channel.index + "]") + " " + "[" + switchbank.instance + "," + channel.index + "]",
+            "timeout": 10000
+          };
+          app.debug("saving metadata for '%s'", path);
+          delta.addMeta(path, value);
+        });
+      });
       delta.commit().clear();
 
       // Register a put handler for all switch bank relay channels.
-      options.switchbanks.filter(sb => (sb.type == "relay")).forEach(sb => {
-        for (var ch = 1; ch <= sb.channelcount; ch++) {
-          var path = options.root + sb.instance + "." + ch + ".state";
+      options.switchbanks.filter(sb => (sb.type == "relay")).forEach(switchbank => {
+        switchbank.channels.forEach(channel => {
+          var path = options.root + switchbank.instance + "." + channel.index + ".state";
+          app.debug("installing put handler for '%s'", path);
           app.registerPutHandler('vessels.self', path, actionHandler, plugin.id);
-        }
+        });
       });
     } else {
       log.W("no switchbanks are configured");
