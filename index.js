@@ -28,6 +28,11 @@ const PLUGIN_SCHEMA = {
       "title": "Root path under which switchbank keys will be inserted",
       "type": "string"
     },
+    "simulate": {
+      "title": "Simulate behaviour by setting switch output values directly (rather than over NMEA)",
+      "type": "boolean",
+      "default": false
+    },
     "switchbanks" : {
       "title": "Switch bank definitions",
       "type": "array",
@@ -109,6 +114,7 @@ module.exports = function(app) {
       
       var channelCount = options.switchbanks.reduce((a,sb) => { return(a + ((sb.channels)?sb.channels.length:0)); }, 0);
       log.N("processing %d channel%s in %d switch bank%s", channelCount, ((channelCount == 1)?"":"s"), options.switchbanks.length, (options.switchbanks.length == 1)?"":"s");
+      if (options.simulate) log.N("simulate mode enabled (no NMEA output)");
 
       // Publish meta information for all maintained keys.
       options.switchbanks.forEach(switchbank => {
@@ -132,8 +138,8 @@ module.exports = function(app) {
       options.switchbanks.filter(sb => (sb.type == "relay")).forEach(switchbank => {
         switchbank.channels.forEach(channel => {
           var path = options.root + switchbank.instance + "." + channel.index + ".state";
-          app.debug("installing put handler for '%s'", path);
-          app.registerPutHandler('vessels.self', path, actionHandler, plugin.id);
+          app.debug("installing %sput handler for '%s'", ((options.simulate)?"simulated ":""), path);
+          app.registerPutHandler('vessels.self', path, ((options.simulate)?simulateHandler:actionHandler), plugin.id);
         });
       });
     } else {
@@ -175,6 +181,13 @@ module.exports = function(app) {
     } else {
       log.E("ignoring invalid put request");
     }
+    return({ state: 'COMPLETED', statusCode: 200 });
+  }
+
+  function simulateHandler(context, path, value, callback) {
+    app.debug("processing put request (path = %s, value = %s)", path, value);
+    delta.clear().addValue(path, value).commit();
+    log.N("issued delta on '%s' (%d)", path, value);
     return({ state: 'COMPLETED', statusCode: 200 });
   }
 
