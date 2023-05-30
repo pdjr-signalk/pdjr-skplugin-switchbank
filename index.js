@@ -28,11 +28,6 @@ const PLUGIN_SCHEMA = {
       "title": "Root path under which switchbank keys will be inserted",
       "type": "string"
     },
-    "simulate": {
-      "title": "Simulate behaviour by setting switch output values directly (rather than over NMEA)",
-      "type": "boolean",
-      "default": false
-    },
     "switchbanks" : {
       "title": "Switch bank definitions",
       "type": "array",
@@ -81,14 +76,14 @@ const PLUGIN_SCHEMA = {
         }
       }
     }
+  },
+  "required": [ "root", "switchbanks" ],
+  "default": {
+    "root": "electrical.switches.bank.",
+    "switchbanks": []
   }
 };
 const PLUGIN_UISCHEMA = {};
-
-const OPTIONS_DEFAULT = {
-  "root": "electrical.switches.bank.",
-  "switchbanks": []
-};
 
 module.exports = function(app) {
   var plugin = {};
@@ -106,15 +101,14 @@ module.exports = function(app) {
   plugin.start = function(options) {
 
     if (Object.keys(options).length === 0) {
-      log.N("plugin configuration file missing or broken", false);
-      options = OPTIONS_DEFAULT;
+      options = plugin.schema.default;
+      log.N("using default configuration", false);
     }
 
-    if ((options.root) && (options.switchbanks.length !== 0)) {
+    if ((options.root) && (options.switchbanks) && (Array.isArray(options.switchbanks)) && (options.switchbanks.length !== 0)) {
       
       var channelCount = options.switchbanks.reduce((a,sb) => { return(a + ((sb.channels)?sb.channels.length:0)); }, 0);
-      log.N("processing %d channel%s in %d switch bank%s", channelCount, ((channelCount == 1)?"":"s"), options.switchbanks.length, (options.switchbanks.length == 1)?"":"s");
-      if (options.simulate) log.N("simulate mode enabled (no NMEA output)");
+      log.N("started: processing %d channel%s in %d switch bank%s", channelCount, ((channelCount == 1)?"":"s"), options.switchbanks.length, (options.switchbanks.length == 1)?"":"s");
 
       // Publish meta information for all maintained keys.
       options.switchbanks.forEach(switchbank => {
@@ -138,12 +132,12 @@ module.exports = function(app) {
       options.switchbanks.filter(sb => (sb.type == "relay")).forEach(switchbank => {
         switchbank.channels.forEach(channel => {
           var path = options.root + switchbank.instance + "." + channel.index + ".state";
-          app.debug("installing %sput handler for '%s'", ((options.simulate)?"simulated ":""), path);
-          app.registerPutHandler('vessels.self', path, ((options.simulate)?simulateHandler:actionHandler), plugin.id);
+          app.debug("installing put handler for '%s'", path);
+          app.registerPutHandler('vessels.self', path, actionHandler, plugin.id);
         });
       });
     } else {
-      log.W("no switchbanks are configured");
+      log.N("stopped: no switchbanks are configured");
     }
   }
 
@@ -181,13 +175,6 @@ module.exports = function(app) {
     } else {
       log.E("ignoring invalid put request");
     }
-    return({ state: 'COMPLETED', statusCode: 200 });
-  }
-
-  function simulateHandler(context, path, value, callback) {
-    app.debug("processing put request (path = %s, value = %s)", path, value);
-    delta.clear().addValue(path, value).commit();
-    log.N("issued delta on '%s' (%d)", path, value);
     return({ state: 'COMPLETED', statusCode: 200 });
   }
 
