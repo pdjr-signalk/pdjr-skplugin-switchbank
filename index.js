@@ -164,16 +164,35 @@ module.exports = function(app) {
   function actionHandler(context, path, value, callback) {
     app.debug("processing put request (path = %s, value = %s)", path, value);
     var parts = path.split('.') || [];
-    if (((!isNaN(parts[3])) && (!isNaN(parts[4])) && (!isNaN(value))) // instance, channel and value are numeric
-    && ((parts[3] >= 0) && (parts[3] <= 0xFE)) // instance is valid (in range 0..254)
-    && ((parts[4] >= 1) && (parts[4] <= 28)) // channel is valid (in range 1..28)
-    && ((value === 0) || (value === 1) || (value === 2) || (value === 3))) { // value is valid
-      message = Nmea2000.makeMessagePGN127502(parts[3], (parts[4] - 1), value);
-      app.emit('nmea2000out', message);
-      // app.emit('nmea2000out', message);
-      log.N("transmitted NMEA message '%s'", message);
+    if ((!isNaN(parts[3])) && (!isNaN(parseFloat(parts[3])))) {
+      var instance = parseInt(parts[3]);
+      if ((instance >= 0) && (instance <= 0xFE)) {
+        if ((!isNaN(parts[4])) && (!isNaN(parseFloat(parts[4])))) {
+          var channel = parseInt(parts[4]);
+          if  ((channel >= 1) && (channel <= 28)) {
+            if ((!isNaN(value)) && (!isNaN(parseFloat(value)))) {
+              value = parseInt(value);
+              if ((value == 0) || (value == 1) || (value == 2) || (value == 3)) {
+                var message = Nmea2000.makeMessagePGN127502(instance, (channel - 1), value);
+                app.emit('nmea2000out', message);
+                log.N("transmitted NMEA message '%s'", message);
+              } else {
+                log.E("put request contains invalid value (%d)", value);
+              }
+            } else {
+              log.E("put request value is not a number (%s)", value);
+            }
+          } else {
+            log.E("put request channel is out of range (%d)", channel);
+          }
+        } else {
+          log.E("put request channel is not a number (%s)", parts[4]);
+        }
+      } else {
+        log.E("put request instance is out of range (%d)", instance);
+      }
     } else {
-      log.E("ignoring invalid put request");
+      log.E("put request instance is not a number (%s)", parts[3]);
     }
     return({ state: 'COMPLETED', statusCode: 200 });
   }
