@@ -37,7 +37,7 @@ const PLUGIN_SCHEMA = {
         "required": [ "instance", "channelcount" ],
         "properties": {
           "instance": {
-            "description": "NMEA 2000 switchbank instance number",
+            "description": "Switchbank instance number",
             "type": "number", "default": 0, "title": "Switch bank instance"
           },
           "type": {
@@ -49,7 +49,7 @@ const PLUGIN_SCHEMA = {
             "type": "number", "default": 8, "title": "Number of supported channels"
           },
           "description": {
-            "description": "Narrative describing the module (serial no, intall location, etc)",
+            "description": "Text describing the module (serial no, intall location, etc)",
             "type": "string", "default": "", "title": "Switch bank description"
           },
           "channels": {
@@ -102,7 +102,7 @@ module.exports = function(app) {
 
     if (Object.keys(options).length === 0) {
       options = plugin.schema.default;
-      log.N("using default configuration", false);
+      log.W("using default configuration");
     }
 
     if ((options.root) && (options.switchbanks) && (Array.isArray(options.switchbanks)) && (options.switchbanks.length !== 0)) {
@@ -112,9 +112,18 @@ module.exports = function(app) {
 
       // Publish meta information for all maintained keys.
       options.switchbanks.forEach(switchbank => {
+        var path = options.root + switchbank.instance;
+        var value = {
+          "description" : switchbank.description,
+          "type": switchbank.type,
+          "instance": switchbank.instance,
+          "channelCount": switchbank.channelcount
+        };
+        app.debug("saving metadata for '%s' (%s)", path, JSON.stringify(value));
+        delta.addMeta(path, value);
         switchbank.channels.forEach(channel => {
-          var path = options.root + switchbank.instance + "." + channel.index + ".state";
-          var value = {
+          path = options.root + switchbank.instance + "." + channel.index + ".state";
+          value = {
             "description": "Binary " + switchbank.type + " state (0 = OFF, 1 = ON)",
             "type": switchbank.type,
             "shortName": "[" + switchbank.instance + "," + channel.index + "]",
@@ -122,7 +131,7 @@ module.exports = function(app) {
             "longName": channel.description || ("[" + switchbank.instance + "," + channel.index + "]") + " " + "[" + switchbank.instance + "," + channel.index + "]",
             "timeout": 10000
           };
-          app.debug("saving metadata for '%s'", path);
+          app.debug("saving metadata for '%s' (%s)", path, JSON.stringify(value));
           delta.addMeta(path, value);
         });
       });
