@@ -1,7 +1,7 @@
 {
   "name": "pdjr-skplugin-switchbank",
   "version": "1.0.0",
-  "description": "Extend support for NMEA2000 switchbanks.",
+  "description": "NMEA2000 switchbank interface.",
   "main": "index.js",
   "signalk-plugin-enabled-by-default": true,
   "scripts": {
