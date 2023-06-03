@@ -1,6 +1,6 @@
 # pdjr-skplugin-switchbank
 
-Extend support for NMEA 2000 switchbanks.
+NMEA 2000 switchbank support.
 
 ## Background
 
@@ -14,7 +14,7 @@ architecture to suit.
 
 The control architecture consists of a Signal K plugin which handles
 the logic of what to do when and this plugin which binds Signal K's
-logical switchbanks to NMEA 2000 out on the NMEA bus.
+logical switchbanks to NMEA 2000 devices out on the NMEA bus.
 
 ## Description
 
