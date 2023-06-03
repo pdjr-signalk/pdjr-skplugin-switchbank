@@ -128,7 +128,7 @@ module.exports = function(app) {
             "type": switchbank.type,
             "shortName": "[" + switchbank.instance + "," + channel.index + "]",
             "displayName": channel.description || ("[" + switchbank.instance + "," + channel.index + "]"),
-            "longName": channel.description || ("[" + switchbank.instance + "," + channel.index + "]") + " " + "[" + switchbank.instance + "," + channel.index + "]",
+            "longName": channel.description + ("[" + switchbank.instance + "," + channel.index + "]"),
             "timeout": 10000
           };
           app.debug("saving metadata for '%s' (%s)", path, JSON.stringify(value));
