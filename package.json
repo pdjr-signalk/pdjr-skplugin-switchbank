@@ -1,11 +1,11 @@
 {
   "name": "pdjr-skplugin-switchbank",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "Extend support for NMEA2000 switchbanks.",
   "main": "index.js",
   "signalk-plugin-enabled-by-default": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\""
   },
   "repository": {
     "type": "git",
@@ -24,9 +24,9 @@
   },
   "homepage": "https://github.com/pdjr-signalk/pdjr-skplugin-switchbank#readme",
   "dependencies": {
-    "baconjs": "^1.0.1",
-    "debug": "^4.2.0",
-    "sprint-js": "^0.1.0",
     "sprintf-js": "^1.1.2"
+  },
+  "directories": {
+    "lib": "lib"
   }
 }
