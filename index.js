@@ -142,7 +142,7 @@ module.exports = function(app) {
         switchbank.channels.forEach(channel => {
           var path = options.root + switchbank.instance + "." + channel.index + ".state";
           app.debug("installing put handler for '%s'", path);
-          app.registerPutHandler('vessels.self', path, actionHandler, plugin.id);
+          app.registerPutHandler('vessels.self', path, putHandler, plugin.id);
         });
       });
     } else {
@@ -170,7 +170,7 @@ module.exports = function(app) {
    * @param {*} callback 
    * @returns 
    */
-  function actionHandler(context, path, value, callback) {
+  function putHandler(context, path, value, callback) {
     app.debug("processing put request (path = %s, value = %s)", path, value);
     var parts = path.split('.') || [];
     if ((!isNaN(parts[3])) && (!isNaN(parseFloat(parts[3])))) {
