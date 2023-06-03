@@ -1,6 +1,6 @@
 # pdjr-skplugin-switchbank
 
-Extend support for NMEA 2000 switchbanks.
+NMEA 2000 switchbank support.
 
 ## Background
 
