@@ -25,8 +25,9 @@ const PLUGIN_SCHEMA = {
   "type": "object",
   "properties": {
     "root": {
-      "title": "Root path under which switchbank keys will be inserted",
-      "type": "string"
+      "title": "Root path for all switchbank keys",
+      "type": "string",
+      "default": "electrical.switches.bank."
     },
     "switchbanks" : {
       "title": "Switch bank definitions",
@@ -44,10 +45,6 @@ const PLUGIN_SCHEMA = {
             "description": "Whether this switchbanks is a switch input module or a relay output module",
             "type": "string", "default": "relay", "enum": [ "switch", "relay" ], "title": "Switch bank type"
           },
-          "channelcount": {
-            "description": "Number of channels supported by the module",
-            "type": "number", "default": 8, "title": "Number of supported channels"
-          },
           "description": {
             "description": "Text describing the module (serial no, intall location, etc)",
             "type": "string", "default": "", "title": "Switch bank description"
@@ -57,7 +54,6 @@ const PLUGIN_SCHEMA = {
             "type": "array",
             "items": {
               "type": "object",
-              "required": [ "index" ],
               "properties": {
                 "index": {
                   "title": "Channel index",
@@ -69,21 +65,23 @@ const PLUGIN_SCHEMA = {
                   "type": "string",
                   "default": ""
                 }
-              }
+              },
+              "required": [ "index" ]
             },
             "default": []
           }
-        }
+        },
+        "required": [ "instance", "channels" ]
       }
     }
   },
-  "required": [ "root", "switchbanks" ],
-  "default": {
-    "root": "electrical.switches.bank.",
-    "switchbanks": []
-  }
+  "required": [ "root", "switchbanks" ]
 };
 const PLUGIN_UISCHEMA = {};
+
+const SWITCHBANK_TYPE_DEFAULT = "relay";
+const SWITCHBANK_DESCRIPTION_DEFAULT = "";
+const CHANNEL_DESCRIPTION_DEFAULT = "";
 
 module.exports = function(app) {
   var plugin = {};
@@ -100,53 +98,65 @@ module.exports = function(app) {
 
   plugin.start = function(options) {
 
-    if (Object.keys(options).length === 0) {
-      options = plugin.schema.default;
-      log.W("using default configuration");
-    }
+    if (Object.keys(options).length != 0) {
+      if ((options.root) && (options.switchbanks) && (Array.isArray(options.switchbanks)) && (options.switchbanks.length > 0)) {
+        
+        log.N("operating %d switch and %d relay switch banks",
+          options.switchbanks.reduce((a,sb) => (((sb.type) && (sb.type == 'switch'))?(a + 1):a), 0),
+          options.switchbanks.reduce((a,sb) => (((!(sb.type)) || (sb.type == 'relay'))?(a + 1):a), 0)
+        );
 
-    if ((options.root) && (options.switchbanks) && (Array.isArray(options.switchbanks)) && (options.switchbanks.length !== 0)) {
-      
-      var channelCount = options.switchbanks.reduce((a,sb) => { return(a + ((sb.channels)?sb.channels.length:0)); }, 0);
-      log.N("started: processing %d channel%s in %d switch bank%s", channelCount, ((channelCount == 1)?"":"s"), options.switchbanks.length, (options.switchbanks.length == 1)?"":"s");
+        // Publish meta information for all maintained keys.
+        try {
+          options.switchbanks.forEach(switchbank => {
+            if (switchbank.instance) {
+              switchbank.path = options.root + switchbank.instance;
+              switchbank.type = (switchbank.type)?switchbank.type:SWITCHBANK_TYPE_DEFAULT;
+              switchbank.description = (switchbank.description)?switchbank.description:SWITCHBANK_DESCRIPTION_DEFAULT;
 
-      // Publish meta information for all maintained keys.
-      options.switchbanks.forEach(switchbank => {
-        var path = options.root + switchbank.instance;
-        var value = {
-          "description" : switchbank.description,
-          "type": switchbank.type,
-          "instance": switchbank.instance,
-          "channelCount": switchbank.channelcount
-        };
-        app.debug("saving metadata for '%s' (%s)", path, JSON.stringify(value));
-        delta.addMeta(path, value);
-        switchbank.channels.forEach(channel => {
-          path = options.root + switchbank.instance + "." + channel.index + ".state";
-          value = {
-            "description": "Binary " + switchbank.type + " state (0 = OFF, 1 = ON)",
-            "type": switchbank.type,
-            "shortName": "[" + switchbank.instance + "," + channel.index + "]",
-            "displayName": channel.description || ("[" + switchbank.instance + "," + channel.index + "]"),
-            "longName": channel.description + ("[" + switchbank.instance + "," + channel.index + "]"),
-            "timeout": 10000
-          };
-          app.debug("saving metadata for '%s' (%s)", path, JSON.stringify(value));
-          delta.addMeta(path, value);
-        });
-      });
-      delta.commit().clear();
+              var value = { "instance": switchbank.instance, "type": switchbank.type, "description" : switchbank.description };
+              app.debug("saving metadata for '%s' (%s)", switchbank.path, JSON.stringify(value));
+              delta.addMeta(switchbank.path, value);
+            } else {
+              throw new Error("missing switchbank instance property");
+            }
 
-      // Register a put handler for all switch bank relay channels.
-      options.switchbanks.filter(sb => (sb.type == "relay")).forEach(switchbank => {
-        switchbank.channels.forEach(channel => {
-          var path = options.root + switchbank.instance + "." + channel.index + ".state";
-          app.debug("installing put handler for '%s'", path);
-          app.registerPutHandler('vessels.self', path, putHandler, plugin.id);
-        });
-      });
+            switchbank.channels.forEach(channel => {
+              if (channel.index) {
+                channel.path = switchbank.path + "." + channel.index + ".state";
+                channel.description = (channel.description)?channel.description:CHANNEL_DESCRIPTION_DEFAULT;
+                value = {
+                  "description": "Binary " + switchbank.type + " state (0 = OFF, 1 = ON)",
+                  "type": switchbank.type,
+                  "shortName": "[" + switchbank.instance + "," + channel.index + "]",
+                  "displayName": channel.description,
+                  "longName": channel.description + ("[" + switchbank.instance + "," + channel.index + "]"),
+                  "timeout": 10000
+                };
+                app.debug("saving metadata for '%s' (%s)", channel.path, JSON.stringify(value));
+                delta.addMeta(channel.path, value);
+              } else {
+                throw new Error("missing channel index property");
+              }
+            });
+          });
+          delta.commit().clear();
+
+          // Register a put handler for all switch bank relay channels.
+          options.switchbanks.filter(sb => (sb.type == "relay")).forEach(switchbank => {
+            switchbank.channels.forEach(channel => {
+              app.debug("installing put handler for '%s'", channel.path);
+              app.registerPutHandler('vessels.self', channel.path, putHandler, plugin.id);
+            });
+          });
+        } catch(e) {
+          log.E("plugin configuration error (%s)", e.message);
+        }
+      } else {
+        log.E("plugin configuration missing root and/or switchbanks properties");
+      }
     } else {
-      log.N("stopped: no switchbanks are configured");
+      log.W("plugin configuration file is missing or unusable");
     }
   }
 
