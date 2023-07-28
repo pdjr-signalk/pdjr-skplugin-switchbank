@@ -85,4 +85,4 @@ will be displayed on the Signal K dashboard.
 
 ## Author
 
-Paul Reeve <preeve_at_pdjr_dot_eu>
+Paul Reeve <*preeve_at_pdjr_dot_eu*>

@@ -1,6 +1,6 @@
 {
   "name": "pdjr-skplugin-switchbank",
-  "version": "1.0.1",
+  "version": "2.1.0",
   "description": "NMEA2000 switchbank support.",
   "main": "index.js",
   "signalk-plugin-enabled-by-default": true,
