@@ -14,9 +14,9 @@
  * permissions and limitations under the License.
  */
 
-const Delta = require("./lib/signalk-libdelta/Delta.js");
-const Log = require("./lib/signalk-liblog/Log.js");
-const Nmea2000 = require("./lib/signalk-libnmea2000/Nmea2000.js");
+const Delta = require('./lib/signalk-libdelta/Delta.js');
+const Log = require('./lib/signalk-liblog/Log.js');
+const Nmea2000 = require('./lib/signalk-libnmea2000/Nmea2000.js');
 
 const PLUGIN_ID = "switchbank";
 const PLUGIN_NAME = "pdjr-skplugin-switchbank";
@@ -71,7 +71,8 @@ const PLUGIN_SCHEMA = {
             "default": []
           }
         },
-        "required": [ "instance", "channels" ]
+        "required": [ "instance", "channels" ],
+        "default": []
       }
     }
   },
@@ -97,66 +98,67 @@ module.exports = function(app) {
   const delta = new Delta(app, plugin.id);
 
   plugin.start = function(options) {
+    plugin.options = {};
+    plugin.options.root = (options.root)?options.root:plugin.schema.properties.root.default;
+    plugin.options.switchbanks = (options.switchbanks)?options.switchbanks:plugin.schema.properties.switchbanks.default;
+    app.debug(`Using configuration: ${JSON.stringify(plugin.options, null, 2)}`);
 
-    if (Object.keys(options).length != 0) {
-      if ((options.root) && (options.switchbanks) && (Array.isArray(options.switchbanks)) && (options.switchbanks.length > 0)) {
+    if ((plugin.options.root) && (plugin.options.switchbanks) && (Array.isArray(plugin.options.switchbanks)) && (plugin.options.switchbanks.length > 0)) {
         
-        log.N("operating %d switch and %d relay switch banks",
-          options.switchbanks.reduce((a,sb) => (((sb.type) && (sb.type == 'switch'))?(a + 1):a), 0),
-          options.switchbanks.reduce((a,sb) => (((!(sb.type)) || (sb.type == 'relay'))?(a + 1):a), 0)
-        );
+      log.N(
+        "operating %d switch and %d relay switch banks",
+        plugin.options.switchbanks.reduce((a,sb) => (((sb.type) && (sb.type == 'switch'))?(a + 1):a), 0),
+        plugin.options.switchbanks.reduce((a,sb) => (((!(sb.type)) || (sb.type == 'relay'))?(a + 1):a), 0)
+      );
 
-        // Publish meta information for all maintained keys.
-        try {
-          options.switchbanks.forEach(switchbank => {
-            if (switchbank.instance) {
-              switchbank.path = options.root + switchbank.instance;
-              switchbank.type = (switchbank.type)?switchbank.type:SWITCHBANK_TYPE_DEFAULT;
-              switchbank.description = (switchbank.description)?switchbank.description:SWITCHBANK_DESCRIPTION_DEFAULT;
+      // Publish meta information for all maintained keys.
+      try {
+        plugin.options.switchbanks.forEach(switchbank => {
+          if (switchbank.instance) {
+            switchbank.path = options.root + switchbank.instance;
+            switchbank.type = (switchbank.type)?switchbank.type:SWITCHBANK_TYPE_DEFAULT;
+            switchbank.description = (switchbank.description)?switchbank.description:SWITCHBANK_DESCRIPTION_DEFAULT;
 
-              var value = { "instance": switchbank.instance, "type": switchbank.type, "description" : switchbank.description };
-              app.debug("saving metadata for '%s' (%s)", switchbank.path, JSON.stringify(value));
-              delta.addMeta(switchbank.path, value);
+            var value = { instance: switchbank.instance, type: switchbank.type, description: switchbank.description };
+            app.debug(`saving metadata for '${switchbank.path}' (${JSON.stringify(value)})`);
+            delta.addMeta(switchbank.path, value);
+          } else {
+            throw new Error('missing switchbank instance property');
+          }
+
+          switchbank.channels.forEach(channel => {
+            if (channel.index) {
+              channel.path = `${switchbank.path}.${channel.index}.state`;
+              channel.description = (channel.description)?channel.description:CHANNEL_DESCRIPTION_DEFAULT;
+              value = {
+                description: `Binary ${switchbank.type} state (0 = OFF, 1 = ON)`,
+                type: switchbank.type,
+                shortName: `[${switchbank.instance},${channel.index}]`,
+                displayName: channel.description,
+                longName: `${channel.description} [${switchbank.instance},${channel.index}]`,
+                timeout: 10000
+              };
+              app.debug(`saving metadata for '${channel.path}' (${JSON.stringify(value)})`);
+              delta.addMeta(channel.path, value);
             } else {
-              throw new Error("missing switchbank instance property");
+              throw new Error('missing channel index property');
             }
-
-            switchbank.channels.forEach(channel => {
-              if (channel.index) {
-                channel.path = switchbank.path + "." + channel.index + ".state";
-                channel.description = (channel.description)?channel.description:CHANNEL_DESCRIPTION_DEFAULT;
-                value = {
-                  "description": "Binary " + switchbank.type + " state (0 = OFF, 1 = ON)",
-                  "type": switchbank.type,
-                  "shortName": "[" + switchbank.instance + "," + channel.index + "]",
-                  "displayName": channel.description,
-                  "longName": channel.description + ("[" + switchbank.instance + "," + channel.index + "]"),
-                  "timeout": 10000
-                };
-                app.debug("saving metadata for '%s' (%s)", channel.path, JSON.stringify(value));
-                delta.addMeta(channel.path, value);
-              } else {
-                throw new Error("missing channel index property");
-              }
-            });
           });
-          delta.commit().clear();
+        });
+        delta.commit().clear();
 
-          // Register a put handler for all switch bank relay channels.
-          options.switchbanks.filter(sb => (sb.type == "relay")).forEach(switchbank => {
-            switchbank.channels.forEach(channel => {
-              app.debug("installing put handler for '%s'", channel.path);
-              app.registerPutHandler('vessels.self', channel.path, putHandler, plugin.id);
-            });
+        // Register a put handler for all switch bank relay channels.
+        plugin.options.switchbanks.filter(sb => (sb.type == 'relay')).forEach(switchbank => {
+          switchbank.channels.forEach(channel => {
+            app.debug(`installing put handler for '${channel.path}'`);
+            app.registerPutHandler('vessels.self', channel.path, putHandler, plugin.id);
           });
-        } catch(e) {
-          log.E("plugin configuration error (%s)", e.message);
-        }
-      } else {
-        log.E("plugin configuration missing root and/or switchbanks properties");
+        });
+      } catch(e) {
+        log.E(`plugin configuration error (${e.message})`);
       }
     } else {
-      log.W("plugin configuration file is missing or unusable");
+      log.E('plugin configuration missing root and/or switchbanks properties');
     }
   }
 
@@ -181,7 +183,7 @@ module.exports = function(app) {
    * @returns 
    */
   function putHandler(context, path, value, callback) {
-    app.debug("processing put request (path = %s, value = %s)", path, value);
+    app.debug(`processing put request (path = ${path}, value = ${value})`);
     var parts = path.split('.') || [];
     if ((!isNaN(parts[3])) && (!isNaN(parseFloat(parts[3])))) {
       var instance = parseInt(parts[3]);
@@ -194,24 +196,24 @@ module.exports = function(app) {
               if ((value == 0) || (value == 1) || (value == 2) || (value == 3)) {
                 var message = Nmea2000.makeMessagePGN127502(instance, (channel - 1), value);
                 app.emit('nmea2000out', message);
-                log.N("transmitted NMEA message '%s'", message);
+                log.N(`transmitted NMEA message '${message}'`);
               } else {
-                log.E("put request contains invalid value (%d)", value);
+                log.E(`put request contains invalid value (${value})`);
               }
             } else {
-              log.E("put request value is not a number (%s)", value);
+              log.E(`put request value is not a number (${value})`);
             }
           } else {
-            log.E("put request channel is out of range (%d)", channel);
+            log.E(`put request channel is out of range (${channel})`);
           }
         } else {
-          log.E("put request channel is not a number (%s)", parts[4]);
+          log.E(`put request channel is not a number (${parts[4]})`);
         }
       } else {
-        log.E("put request instance is out of range (%d)", instance);
+        log.E(`put request instance is out of range (${instance})`);
       }
     } else {
-      log.E("put request instance is not a number (%s)", parts[3]);
+      log.E(`put request instance is not a number (${parts[3]})`);
     }
     return({ state: 'COMPLETED', statusCode: 200 });
   }
