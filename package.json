@@ -24,9 +24,10 @@
   },
   "homepage": "https://github.com/pdjr-signalk/pdjr-skplugin-switchbank#readme",
   "dependencies": {
-    "sprintf-js": "^1.1.3"
+    "signalk-libdelta": "github:pdjr-signalk/signalk-libdelta",
+    "signalk-liblog": "github:pdjr-signalk/signalk-liblog",
+    "signalk-libnmea2000": "github:pdjr-signalk/signalk-libnmea2000"
   },
   "directories": {
-    "lib": "lib"
   }
 }
