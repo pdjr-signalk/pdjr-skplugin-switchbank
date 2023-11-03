@@ -14,9 +14,9 @@
  * permissions and limitations under the License.
  */
 
-const Delta = require('./lib/signalk-libdelta/Delta.js');
-const Log = require('./lib/signalk-liblog/Log.js');
-const Nmea2000 = require('./lib/signalk-libnmea2000/Nmea2000.js');
+const Delta = require('signalk-libdelta/Delta.js');
+const Log = require('signalk-liblog/Log.js');
+const Nmea2000 = require('signalk-libnmea2000/Nmea2000.js');
 
 const PLUGIN_ID = "switchbank";
 const PLUGIN_NAME = "pdjr-skplugin-switchbank";
