@@ -1,9 +1,0 @@
-[submodule "lib/signalk-liblog"]
-	path = lib/signalk-liblog
-	url = https://github.com/pdjr-signalk/signalk-liblog
-[submodule "lib/signalk-libdelta"]
-	path = lib/signalk-libdelta
-	url = https://github.com/pdjr-signalk/signalk-libdelta
-[submodule "lib/signalk-libnmea2000"]
-	path = lib/signalk-libnmea2000
-	url = https://github.com/pdjr-signalk/signalk-libnmea2000
