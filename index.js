@@ -46,6 +46,10 @@ const PLUGIN_SCHEMA = {
             "description": "Whether this switchbanks is a switch input module or a relay output module",
             "type": "string", "default": "relay", "enum": [ "switch", "relay" ], "title": "Switch bank type"
           },
+          "channelCount": {
+            "description": "Number of channels supported by this switchbank",
+            "type": "number"
+          },
           "description": {
             "description": "Text describing the module (serial no, intall location, etc)",
             "type": "string", "default": "", "title": "Switch bank description"
@@ -67,14 +71,15 @@ const PLUGIN_SCHEMA = {
                   "default": ""
                 }
               },
-              "required": [ "index" ],
+              "required": [ "index", "channelCount" ],
               "default": { "description": "A switchbank channel" }
             }
           }
         },
-        "required": [ "instance", "channels" ],
+        "required": [ "instance" ],
         "default": {
           "type": "relay",
+          "channelCount": 8,
           "description": "A relay switchbank",
           "channels": []
         },      
@@ -110,9 +115,10 @@ module.exports = function(app) {
     plugin.options = {
       root: (options.root)?options.root:plugin.schema.properties.root.default,
       switchbanks: (options.switchbanks || plugin.schema.properties.switchbanks.default).reduce((a,switchbank) => {
-        var validSwitchbank = _.cloneDeep(plugin.schema.properties.switchbanks.items.default);
-        _.merge(validSwitchbank, switchbank);
         try {
+          var validSwitchbank = _.cloneDeep(plugin.schema.properties.switchbanks.items.default);
+          _.merge(validSwitchbank, switchbank);
+          console.log(JSON.stringify(validSwitchbank, null, 2));
           if (!validSwitchbank.instance) throw new Error("missing switchbank 'instance' property");
           validSwitchbank.channels = validSwitchbank.channels.reduce((a,channel) => {
             try {
