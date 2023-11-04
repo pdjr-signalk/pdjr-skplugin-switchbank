@@ -132,8 +132,8 @@ module.exports = function(app) {
     plugin.options.switchbanks.forEach(switchbank => {
       switchbank.channels.forEach(channel => {
         channel.path = `${plugin.options.root}${switchbank.instance}.${channel.index}.state`;
-      })
-    }
+      });
+    });
     app.debug(`using configuration: ${JSON.stringify(plugin.options, null, 2)}`);
         
     log.N(
