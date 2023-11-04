@@ -119,6 +119,7 @@ module.exports = function(app) {
             try {
               console.log(JSON.stringify(channel));
               var validChannel = { ...plugin.schema.properties.switchbanks.items.properties.channels.items.default, ...channel };
+              console.log(JSON.stringify(validChannel));
               if (index === undefined) throw new Error("missing channel 'index' property");
               a.push(validChannel);
             } catch(e) { `dropping channel  (${e.message})` }
