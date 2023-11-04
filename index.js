@@ -14,6 +14,7 @@
  * permissions and limitations under the License.
  */
 
+const _ = require('lodash');
 const Delta = require('signalk-libdelta/Delta.js');
 const Log = require('signalk-liblog/Log.js');
 const Nmea2000 = require('signalk-libnmea2000/Nmea2000.js');
