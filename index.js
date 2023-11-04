@@ -117,15 +117,14 @@ module.exports = function(app) {
           if (!validSwitchbank.instance) throw new Error("missing switchbank 'instance' property");
           validSwitchbank.channels = validSwitchbank.channels.reduce((a,channel) => {
             try {
-              console.log(JSON.stringify(channel));
               var validChannel = { ...plugin.schema.properties.switchbanks.items.properties.channels.items.default, ...channel };
               if (validChannel.index === undefined) throw new Error("missing channel 'index' property");
               a.push(validChannel);
-            } catch(e) { `dropping channel  (${e.message})` }
+            } catch(e) { log.W(`dropping channel  (${e.message})`); }
             return(a);
           }, []);
           a.push(validSwitchbank);
-        } catch(e) { `dropping switchbank (${e.message})` }
+        } catch(e) { log.W(`dropping switchbank (${e.message})`); }
         return(a);
       }, [])
     }
