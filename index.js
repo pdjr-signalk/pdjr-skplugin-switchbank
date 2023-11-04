@@ -94,10 +94,6 @@ const PLUGIN_SCHEMA = {
 };
 const PLUGIN_UISCHEMA = {};
 
-const SWITCHBANK_TYPE_DEFAULT = "relay";
-const SWITCHBANK_DESCRIPTION_DEFAULT = "";
-const CHANNEL_DESCRIPTION_DEFAULT = "";
-
 module.exports = function(app) {
   var plugin = {};
   var unsubscribes = [];
@@ -118,10 +114,10 @@ module.exports = function(app) {
         try {
           var validSwitchbank = _.cloneDeep(plugin.schema.properties.switchbanks.items.default);
           _.merge(validSwitchbank, switchbank);
-          console.log(JSON.stringify(validSwitchbank, null, 2));
           if (!validSwitchbank.instance) throw new Error("missing switchbank 'instance' property");
           validSwitchbank.channels = validSwitchbank.channels.reduce((a,channel) => {
             try {
+              console.log(JSON.stringify(channel));
               var validChannel = { ...plugin.schema.properties.switchbanks.items.properties.channels.items.default, ...channel };
               if (index === undefined) throw new Error("missing channel 'index' property");
               a.push(validChannel);
@@ -147,7 +143,8 @@ module.exports = function(app) {
       var switchbankMetaValue = {
         instance: switchbank.instance,
         type: switchbank.type,
-        description: switchbank.description
+        description: switchbank.description,
+        channelCount: switchbank.channelCount
       }
       app.debug(`saving metadata for '${switchbankMetaPath}' (${JSON.stringify(switchbankMetaValue)})`);
       delta.addMeta(switchbankMetaPath, switchbankMetaValue);
