@@ -149,7 +149,8 @@ module.exports = function(app) {
         instance: switchbank.instance,
         type: switchbank.type,
         description: switchbank.description,
-        channelCount: switchbank.channelCount
+        channelCount: switchbank.channelCount,
+        $source: `plugin:${plugin.id}` 
       }   
       switchbank.channels.forEach(channel => {
         a[`${options.root}${switchbank.instance}.${channel.index}.state`] = {
@@ -158,7 +159,8 @@ module.exports = function(app) {
           shortName: `[${switchbank.instance},${channel.index}]`,
           displayName: channel.description,
           longName: `${channel.description} [${switchbank.instance},${channel.index}]`,
-          timeout: 10000
+          timeout: 10000,
+          $source: `plugin:${plugin.id}` 
         };
       });
       return(a);
