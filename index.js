@@ -110,7 +110,7 @@ module.exports = function(app) {
   const delta = new Delta(app, plugin.id);
 
   plugin.start = function(options) {
-    plugin.options = _.cloneDeep(plugin.schema.properties.default);
+    plugin.options = _.cloneDeep(plugin.schema.default);
     _.merge(plugin.options, options);
     plugin.options.switchbanks = plugin.options.switchbanks.reduce((a,switchbank) => {
       try {
