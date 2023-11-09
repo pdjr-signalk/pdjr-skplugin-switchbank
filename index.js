@@ -166,11 +166,16 @@ module.exports = function(app) {
       return(a);
     },{});
     if (plugin.options.putMetadataUrl) {
-      fetch(plugin.options.putMetadataUrl, { "method": "PUT", "Content-Type": "application/json", "credentials": "include", "body": JSON.stringify(metadata) }).then((response) => {
-        ;
-      }).catch((e) => {
-        log.E(`error uploading metadata ($e)`);
-      });
+      var tryCount = 3;
+      var intervalId = setInterval(() => {
+        if (tryCount--) {
+          fetch(plugin.options.putMetadataUrl, { "method": "PUT", "Content-Type": "application/json", "credentials": "include", "body": JSON.stringify(metadata) }).then((response) => {
+            clearInterval(intervalId);
+          }).catch((e) => {
+            log.E(`error uploading metadata ($e)`);
+          });
+        } else clearInterval(intervalId);    
+      }, 10000);
     } else {
       delta.addMetas(metadata).commit().clear();
     }
