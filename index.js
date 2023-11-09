@@ -190,33 +190,32 @@ module.exports = function(app) {
             const [ username, password ] = plugin.options.metadataPublisher.credentials.split(':');   
             httpInterface.getAuthenticationToken(username, password).then((token) => {
               console.log(token);
-              app.debug(`authenticated as '${username}' with '${serverAddress}' using API '${Object.keys(serverInfo.endpoints)[0]}'`, false);
+              app.debug(`authenticated as '${username}' with '${serverAddress}' using API '${Object.keys(serverInfo.endpoints)[0]}'`);
               app.debug(`publishing metadata to '${serverAddress}${plugin.options.metadataPublisher.endpoint}'`);
               var tryCount = 3;
               var intervalId = setInterval(() => {
-                if (tryCount > 0) {
-                  fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": "PUT", "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
-                    if (response.status == 200) {
-                      updateSuccess = true;
-                      clearInterval(intervalId);
-                    } else {
-                      log.E(`error uploading metadata (${response.status}); retrying`);
-                    }
-                  }).catch((e) => {
-                    log.E(`error uploading metadata (${e})`);
-                  });
-                } else clearInterval(intervalId);
-                tryCount--;  
+                if (tryCount-- === 0) clearInterval(intervalId);
+                fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": "PUT", "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
+                  if (response.status == 200) {
+                    updateSuccess = true;
+                    clearInterval(intervalId);
+                  } else {
+                    log.E(`error uploading metadata (status ${response.status}); retrying...`);
+                  }
+                }).catch((e) => {
+                  log.E(`unrecoverable error uploading metadata (${e})`);
+                  clearInterval(intervalId);
+                });
               }, 10000);
             })
           })
         })
       } catch(e) { app.debug(`metadata could not be published to '${plugin.options.metadataPublisher}'`)}
     }
-    //if (!updateSuccess) {
-    //  app.debug(`updating metadata`);
-    //  delta.addMetas(metadata).commit().clear();
-    //}
+    if (!updateSuccess) {
+      app.debug(`updating metadata`);
+      delta.addMetas(metadata).commit().clear();
+    }
 
     // Register a put handler for all switch bank relay channels.
     plugin.options.switchbanks.filter(sb => (sb.type == 'relay')).forEach(switchbank => {
