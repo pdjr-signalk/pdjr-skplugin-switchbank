@@ -26,6 +26,7 @@
   "dependencies": {
     "lodash": "^4.17.21",
     "signalk-libdelta": "github:pdjr-signalk/signalk-libdelta",
+    "signalk-libhttpinterface": "github:pdjr-signalk/signalk-libhttpinterface",
     "signalk-liblog": "github:pdjr-signalk/signalk-liblog",
     "signalk-libnmea2000": "github:pdjr-signalk/signalk-libnmea2000"
   },

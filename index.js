@@ -18,6 +18,8 @@ const _ = require('lodash');
 const Delta = require('signalk-libdelta/Delta.js');
 const Log = require('signalk-liblog/Log.js');
 const Nmea2000 = require('signalk-libnmea2000/Nmea2000.js');
+const HttpInterface = require('./lib/signalk-libhttpinterface/HttpInterface.js');
+
 
 const PLUGIN_ID = 'switchbank';
 const PLUGIN_NAME = 'pdjr-skplugin-switchbank';
@@ -29,9 +31,18 @@ const PLUGIN_SCHEMA = {
       "title": "Root path for all switchbank keys",
       "type": "string"
     },
-    "putMetadataUrl": {
-      "title": "Send metadata to this endpoint",
-      "type": "string"
+    "metadataPublisher": {
+      "type": "object",
+      "properties": {
+        "endpoint": {
+          "title": "Send metadata to this endpoint",
+          "type": "string"
+        },
+        "credentials": {
+          "title": "Metadata publisher credentials",
+          "type": "string"
+        }
+      }
     },
     "switchbanks" : {
       "title": "Switch bank definitions",
@@ -108,6 +119,8 @@ module.exports = function(app) {
 
   const log = new Log(plugin.id, { ncallback: app.setPluginStatus, ecallback: app.setPluginError });
   const delta = new Delta(app, plugin.id);
+  const httpInterface = new HttpInterface(app.getSelfPath('uuid'));
+
 
   plugin.start = function(options) {
     plugin.options = _.cloneDeep(plugin.schema.default);
@@ -167,24 +180,37 @@ module.exports = function(app) {
       return(a);
     },{});
 
-    if (plugin.options.putMetadataUrl) {
-      app.debug(`publishing metadata to '${plugin.options.putMetadataUrl}'`);
-      var tryCount = 3;
-      var intervalId = setInterval(() => {
-        if (tryCount > 0) {
-          fetch(plugin.options.putMetadataUrl, { "method": "PUT", "Content-Type": "application/json", "credentials": "include", "body": JSON.stringify(metadata) }).then((response) => {
-            if (response.status == 200) {
-              clearInterval(intervalId);
-            } else {
-              log.E(`error uploading metadata (${response.status})`);
-            }
-          }).catch((e) => {
-            log.E(`error uploading metadata (${e})`);
-          });
-        } else clearInterval(intervalId);
-        tryCount--;  
-      }, 10000);
-    } else {
+    var updateSuccess = false;
+    if ((plugin.options.metadataPublisher) && (plugin.options.metadataPublisher.endpoint) && (plugin.options.metadataPublisher.credentials)) {
+      try {
+        httpInterface.getServerAddress().then((serverAddress) => {
+          httpInterface.getServerInfo().then((serverInfo) => {
+            const [ username, password ] = plugin.options.metadataPublisher.credentials.split(':');   
+            httpInterface.getAuthenticationToken(username, password).then((token) => {
+              app.debug(`authenticated as '${username}' with '${serverAddress}' using API '${Object.keys(serverInfo.endpoints)[0]}'`, false);
+              app.debug(`publishing metadata to '${serverAddress}${plugin.options.metadataPublisher.endpoint}'`);
+              var tryCount = 3;
+              var intervalId = setInterval(() => {
+                if (tryCount > 0) {
+                  fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": "PUT", "Content-Type": "application/json", 'Authorization': `Bearer ${token}`, "body": JSON.stringify(metadata) }).then((response) => {
+                    if (response.status == 200) {
+                      updateSuccess = true;
+                      clearInterval(intervalId);
+                    } else {
+                      log.E(`error uploading metadata (${response.status}); retrying`);
+                    }
+                  }).catch((e) => {
+                    log.E(`error uploading metadata (${e})`);
+                  });
+                } else clearInterval(intervalId);
+                tryCount--;  
+              }, 10000);
+            })
+          })
+        })
+      } catch(e) { app.debug(`metadata could not be published to '${plugin.options.metadataPublisher}'`)}
+    }
+    if (!updateSuccess) {
       app.debug(`updating metadata`);
       delta.addMetas(metadata).commit().clear();
     }
