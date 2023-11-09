@@ -166,6 +166,7 @@ module.exports = function(app) {
       return(a);
     },{});
     if (plugin.options.putMetadataUrl) {
+      app.debug(`publishing metadata to '${plugin.options.putMetadataUrl}'`);
       var tryCount = 3;
       var intervalId = setInterval(() => {
         if (tryCount--) {
@@ -177,6 +178,7 @@ module.exports = function(app) {
         } else clearInterval(intervalId);    
       }, 10000);
     } else {
+      app.debug(`updating metadata`);
       delta.addMetas(metadata).commit().clear();
     }
 
