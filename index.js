@@ -180,13 +180,13 @@ module.exports = function(app) {
       return(a);
     },{});
 
-    console.log(JSON.stringify(plugin.options.metadataPublisher));
     var updateSuccess = false;
     if ((plugin.options.metadataPublisher) && (plugin.options.metadataPublisher.endpoint) && (plugin.options.metadataPublisher.credentials)) {
       try {
         httpInterface.getServerAddress().then((serverAddress) => {
           console.log(serverAddress);
           httpInterface.getServerInfo().then((serverInfo) => {
+            console.log(serverInfo);
             const [ username, password ] = plugin.options.metadataPublisher.credentials.split(':');   
             httpInterface.getAuthenticationToken(username, password).then((token) => {
               app.debug(`authenticated as '${username}' with '${serverAddress}' using API '${Object.keys(serverInfo.endpoints)[0]}'`, false);
