@@ -166,6 +166,7 @@ module.exports = function(app) {
       });
       return(a);
     },{});
+
     if (plugin.options.putMetadataUrl) {
       app.debug(`publishing metadata to '${plugin.options.putMetadataUrl}'`);
       var tryCount = 3;
@@ -174,7 +175,7 @@ module.exports = function(app) {
           fetch(plugin.options.putMetadataUrl, { "method": "PUT", "Content-Type": "application/json", "credentials": "include", "body": JSON.stringify(metadata) }).then((response) => {
             clearInterval(intervalId);
           }).catch((e) => {
-            log.E(`error uploading metadata ($e)`);
+            log.E(`error uploading metadata (${e})`);
           });
         } else clearInterval(intervalId);    
       }, 10000);
