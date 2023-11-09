@@ -184,6 +184,7 @@ module.exports = function(app) {
     if ((plugin.options.metadataPublisher) && (plugin.options.metadataPublisher.endpoint) && (plugin.options.metadataPublisher.credentials)) {
       try {
         httpInterface.getServerAddress().then((serverAddress) => {
+          console.log(serverAddress);
           httpInterface.getServerInfo().then((serverInfo) => {
             const [ username, password ] = plugin.options.metadataPublisher.credentials.split(':');   
             httpInterface.getAuthenticationToken(username, password).then((token) => {
