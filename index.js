@@ -171,13 +171,14 @@ module.exports = function(app) {
       app.debug(`publishing metadata to '${plugin.options.putMetadataUrl}'`);
       var tryCount = 3;
       var intervalId = setInterval(() => {
-        if (tryCount--) {
+        if (tryCount > 0) {
           fetch(plugin.options.putMetadataUrl, { "method": "PUT", "Content-Type": "application/json", "credentials": "include", "body": JSON.stringify(metadata) }).then((response) => {
-            clearInterval(intervalId);
+            if (response.status == 200) clearInterval(intervalId);
           }).catch((e) => {
             log.E(`error uploading metadata (${e})`);
           });
-        } else clearInterval(intervalId);    
+        } else clearInterval(intervalId);
+        tryCount--;  
       }, 10000);
     } else {
       app.debug(`updating metadata`);
