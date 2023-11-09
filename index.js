@@ -18,7 +18,7 @@ const _ = require('lodash');
 const Delta = require('signalk-libdelta/Delta.js');
 const Log = require('signalk-liblog/Log.js');
 const Nmea2000 = require('signalk-libnmea2000/Nmea2000.js');
-const HttpInterface = require('./lib/signalk-libhttpinterface/HttpInterface.js');
+const HttpInterface = require('signalk-libhttpinterface/HttpInterface.js');
 
 
 const PLUGIN_ID = 'switchbank';
