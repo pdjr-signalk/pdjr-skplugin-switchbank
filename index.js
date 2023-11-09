@@ -212,10 +212,10 @@ module.exports = function(app) {
         })
       } catch(e) { app.debug(`metadata could not be published to '${plugin.options.metadataPublisher}'`)}
     }
-    if (!updateSuccess) {
-      app.debug(`updating metadata`);
-      delta.addMetas(metadata).commit().clear();
-    }
+    //if (!updateSuccess) {
+    //  app.debug(`updating metadata`);
+    //  delta.addMetas(metadata).commit().clear();
+    //}
 
     // Register a put handler for all switch bank relay channels.
     plugin.options.switchbanks.filter(sb => (sb.type == 'relay')).forEach(switchbank => {
