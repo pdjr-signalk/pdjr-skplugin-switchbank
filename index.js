@@ -27,13 +27,15 @@ const PLUGIN_SCHEMA = {
   "properties": {
     "root": {
       "title": "Root path for all switchbank keys",
-      "type": "string",
-      "default": "electrical.switches.bank."
+      "type": "string"
+    },
+    "putMetadataUrl": {
+      "title": "Send metadata to this endpoint",
+      "type": "string"
     },
     "switchbanks" : {
       "title": "Switch bank definitions",
       "type": "array",
-      "default": [],
       "items": {
         "type": "object",
         "required": [ "instance", "channelcount" ],
@@ -142,20 +144,18 @@ module.exports = function(app) {
     );
 
     // Publish meta information for all maintained keys.
+    var metadata = {};
     plugin.options.switchbanks.forEach(switchbank => {
-      var switchbankMetaPath = options.root + switchbank.instance;
-      var switchbankMetaValue = {
+      metadata[`${options.root}${switchbank.instance}`] = {
         instance: switchbank.instance,
         type: switchbank.type,
         description: switchbank.description,
         channelCount: switchbank.channelCount
       }
       app.debug(`saving metadata for '${switchbankMetaPath}' (${JSON.stringify(switchbankMetaValue)})`);
-      delta.addMeta(switchbankMetaPath, switchbankMetaValue);
    
       switchbank.channels.forEach(channel => {
-        var channelMetaPath = `${switchbankMetaPath}.${channel.index}.state`;
-        var channelMetaValue = {
+        metadata[`${options.root}${switchbank.instance}.${channel.index}.state`] = {
           description: `Binary ${switchbank.type} state (0 = OFF, 1 = ON)`,
           type: switchbank.type,
           shortName: `[${switchbank.instance},${channel.index}]`,
@@ -164,10 +164,17 @@ module.exports = function(app) {
           timeout: 10000
         };
         app.debug(`saving metadata for '${channelMetaPath}' (${JSON.stringify(channelMetaValue)})`);
-        delta.addMeta(channelMetaPath, channelMetaValue);
       });
     });
-    delta.commit().clear();
+    if (plugin.options.putMetadataUrl) {
+      fetch(plugin.options.putMetadataUrl, { "method": "PUT", "Content-Type": "application/json", "credentials": "include", "body": JSON.stringify(metadata) }).then((response) => {
+        ;
+      }).catch((e) => {
+        log.E(`error uploading metadata ($e)`);
+      });
+    } else {
+      delta.addMetas(metadata).commit().clear();
+    }
 
     // Register a put handler for all switch bank relay channels.
     plugin.options.switchbanks.filter(sb => (sb.type == 'relay')).forEach(switchbank => {
