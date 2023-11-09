@@ -189,6 +189,7 @@ module.exports = function(app) {
             console.log(serverInfo);
             const [ username, password ] = plugin.options.metadataPublisher.credentials.split(':');   
             httpInterface.getAuthenticationToken(username, password).then((token) => {
+              console.log(token);
               app.debug(`authenticated as '${username}' with '${serverAddress}' using API '${Object.keys(serverInfo.endpoints)[0]}'`, false);
               app.debug(`publishing metadata to '${serverAddress}${plugin.options.metadataPublisher.endpoint}'`);
               var tryCount = 3;
