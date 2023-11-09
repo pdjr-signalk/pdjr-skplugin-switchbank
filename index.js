@@ -180,6 +180,7 @@ module.exports = function(app) {
       return(a);
     },{});
 
+    console.log(JSON.stringify(plugin.options.metadataPublisher));
     var updateSuccess = false;
     if ((plugin.options.metadataPublisher) && (plugin.options.metadataPublisher.endpoint) && (plugin.options.metadataPublisher.credentials)) {
       try {
