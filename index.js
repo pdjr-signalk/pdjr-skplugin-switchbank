@@ -173,7 +173,11 @@ module.exports = function(app) {
       var intervalId = setInterval(() => {
         if (tryCount > 0) {
           fetch(plugin.options.putMetadataUrl, { "method": "PUT", "Content-Type": "application/json", "credentials": "include", "body": JSON.stringify(metadata) }).then((response) => {
-            if (response.status == 200) clearInterval(intervalId);
+            if (response.status == 200) {
+              clearInterval(intervalId);
+            } else {
+              log.E(`error uploading metadata (${response.status})`);
+            }
           }).catch((e) => {
             log.E(`error uploading metadata (${e})`);
           });
