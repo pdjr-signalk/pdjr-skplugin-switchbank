@@ -164,8 +164,8 @@ module.exports = function(app) {
         type: switchbank.type,
         description: switchbank.description,
         channelCount: switchbank.channelCount,
-        $source: `plugin:${plugin.id}` 
-      }   
+        $source: `plugin:${plugin.id}`,
+      }
       switchbank.channels.forEach(channel => {
         a[`${options.root}${switchbank.instance}.${channel.index}.state`] = {
           description: `Binary ${switchbank.type} state (0 = OFF, 1 = ON)`,
@@ -175,7 +175,7 @@ module.exports = function(app) {
           longName: `${channel.description} [${switchbank.instance},${channel.index}]`,
           timeout: 10000,
           $source: `plugin:${plugin.id}` 
-        };
+        }
       });
       return(a);
     },{});
@@ -195,7 +195,7 @@ module.exports = function(app) {
               var tryCount = 3;
               var intervalId = setInterval(() => {
                 if (tryCount > 0) {
-                  fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": "PUT", "Content-Type": "application/json", 'Authorization': `Bearer ${token}`, "body": JSON.stringify(metadata) }).then((response) => {
+                  fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": "PUT", "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
                     if (response.status == 200) {
                       updateSuccess = true;
                       clearInterval(intervalId);
