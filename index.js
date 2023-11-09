@@ -110,31 +110,32 @@ module.exports = function(app) {
   const delta = new Delta(app, plugin.id);
 
   plugin.start = function(options) {
-    plugin.options = {
-      root: (options.root)?options.root:plugin.schema.properties.root.default,
-      switchbanks: (options.switchbanks || plugin.schema.properties.switchbanks.default).reduce((a,switchbank) => {
-        try {
-          var validSwitchbank = _.cloneDeep(plugin.schema.properties.switchbanks.items.default);
-          _.merge(validSwitchbank, switchbank);
-          if (!validSwitchbank.instance) throw new Error("missing switchbank 'instance' property");
-          validSwitchbank.channels = validSwitchbank.channels.reduce((a,channel) => {
-            try {
-              var validChannel = { ...plugin.schema.properties.switchbanks.items.properties.channels.items.default, ...channel };
-              if (validChannel.index === undefined) throw new Error("missing channel 'index' property");
-              a.push(validChannel);
-            } catch(e) { log.W(`dropping channel  (${e.message})`); }
-            return(a);
-          }, []);
-          a.push(validSwitchbank);
-        } catch(e) { log.W(`dropping switchbank (${e.message})`); }
-        return(a);
-      }, [])
-    }
+    plugin.options = _.cloneDeep(plugin.schema.properties.default);
+    _.merge(plugin.options, options);
+    plugin.options.switchbanks = plugin.options.switchbanks.reduce((a,switchbank) => {
+      try {
+        var validSwitchbank = _.cloneDeep(plugin.schema.properties.switchbanks.items.default);
+        _.merge(validSwitchbank, switchbank);
+        if (!validSwitchbank.instance) throw new Error("missing switchbank 'instance' property");
+        validSwitchbank.channels = validSwitchbank.channels.reduce((a,channel) => {
+          try {
+            var validChannel = { ...plugin.schema.properties.switchbanks.items.properties.channels.items.default, ...channel };
+            if (validChannel.index === undefined) throw new Error("missing channel 'index' property");
+            a.push(validChannel);
+          } catch(e) { log.W(`dropping channel  (${e.message})`); }
+          return(a);
+        }, []);
+        a.push(validSwitchbank);
+      } catch(e) { log.W(`dropping switchbank (${e.message})`); }
+      return(a);
+    }, [])
+
     plugin.options.switchbanks.forEach(switchbank => {
       switchbank.channels.forEach(channel => {
         channel.path = `${plugin.options.root}${switchbank.instance}.${channel.index}.state`;
       });
     });
+
     app.debug(`using configuration: ${JSON.stringify(plugin.options, null, 2)}`);
         
     log.N(
