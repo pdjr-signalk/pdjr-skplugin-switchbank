@@ -144,18 +144,15 @@ module.exports = function(app) {
     );
 
     // Publish meta information for all maintained keys.
-    var metadata = {};
-    plugin.options.switchbanks.forEach(switchbank => {
-      metadata[`${options.root}${switchbank.instance}`] = {
+    var metadata = plugin.options.switchbanks.reduce((a,switchbank) => {
+      a[`${options.root}${switchbank.instance}`] = {
         instance: switchbank.instance,
         type: switchbank.type,
         description: switchbank.description,
         channelCount: switchbank.channelCount
-      }
-      app.debug(`saving metadata for '${switchbankMetaPath}' (${JSON.stringify(switchbankMetaValue)})`);
-   
+      }   
       switchbank.channels.forEach(channel => {
-        metadata[`${options.root}${switchbank.instance}.${channel.index}.state`] = {
+        a[`${options.root}${switchbank.instance}.${channel.index}.state`] = {
           description: `Binary ${switchbank.type} state (0 = OFF, 1 = ON)`,
           type: switchbank.type,
           shortName: `[${switchbank.instance},${channel.index}]`,
@@ -163,9 +160,9 @@ module.exports = function(app) {
           longName: `${channel.description} [${switchbank.instance},${channel.index}]`,
           timeout: 10000
         };
-        app.debug(`saving metadata for '${channelMetaPath}' (${JSON.stringify(channelMetaValue)})`);
       });
-    });
+      return(a);
+    },{});
     if (plugin.options.putMetadataUrl) {
       fetch(plugin.options.putMetadataUrl, { "method": "PUT", "Content-Type": "application/json", "credentials": "include", "body": JSON.stringify(metadata) }).then((response) => {
         ;
