@@ -73,6 +73,10 @@ const PLUGIN_SCHEMA = {
             "description": "Text describing the module (serial no, intall location, etc)",
             "type": "string", "default": "", "title": "Switch bank description"
           },
+          "PGN": {
+            "description": "PGN used to update the switchbank",
+            "type": "string"
+          },
           "channels": {
             "title": "Switch bank channels",
             "type": "array",
@@ -100,6 +104,7 @@ const PLUGIN_SCHEMA = {
           "type": "relay",
           "channelCount": 8,
           "description": "A relay switchbank",
+          "PGN": "127502",
           "channels": []
         },      
       }

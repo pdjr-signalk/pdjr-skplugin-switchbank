@@ -2,35 +2,24 @@
 
 NMEA 2000 switchbank support.
 
-## Background
-
-When I had my ship built I wanted a traditional helm and a modern
-NMEA 2000 control infrastructure, but the only commercially available
-control solutions were "glass helm" products and not to my taste.
-
-I chose to implement a control infrastructure around NMEA 2000
-switchbank switch and relay modules and to code a software control
-architecture to suit.
-
-The control architecture consists of a Signal K plugin which handles
-the logic of what to do when and this plugin which binds Signal K's
-logical switchbanks to NMEA 2000 devices out on the NMEA bus.
-
 ## Description
 
 This plugin offers two distinct services.
 
 Firstly, it provides a mechanism for decorating Signal K's
-'electrical.switches.' hierarchy with user supplied meta-data.
+'electrical.switches.' hierarchy with user supplied metadata.
 This allows switch banks to be documented in a meaningful way (perhaps
 including the device location, product code, serial-number, etc.) and
 switch/relay channels to be described in terms of their function or
 application.
 
-Secondly, the plugin installs a PUT handler on each defined relay
-output channel, supporting state change operations within Signal K and
-allowing PUT operations on switch bank relay channels to operate remote
-relays using PGN 127502 (Switch Bank Control) messages.
+Secondly, the plugin installs a handler on each defined relay output
+channel, which transmits NMEA 2000 relay update messages to the
+associated switchbank each time the channel state changes.
+Relay switchbank updates can be performed using either
+*PGN 127502 Switch Bank Control*
+or
+*PGN ?????? WTF is this*.
 
 ## Configuration
 
