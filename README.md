@@ -111,28 +111,29 @@ function or application.
       </dd>
       <dt>Switchbank channels <code>channels</code></dt>
       <dd>
-
-| channels     | (none)  | Required array of *channel* objects. |
-| type         | 'relay' | Optional string, either 'switch' or 'relay' indicating the type of the switchbank device. |
-| description  | ''      | Optional string describing the switchbank device. |
-
-If the 'type' property is omittted or set to 'relay' then a put handler
-will be installed on each defined output channel which will operate the
-remote switchbank.
-
-The 'description' property can usefully include data on the device's
-installation location, model/serial number and so on.
-
-Each *channel* object has the following properties.
-
-| Property     | Default | Description |
-| :----------- | :------ | :---------- |
-| index        | (none)  | Required integer index of the channel in the containing *switchbank*. Note that this value must conform to Signal K enumeration (base 1) rather than an NMEA enumeration which is often base 0. |
-| description  | ''      | Optional string describing the switch channel. |
-
-The value of the 'description' property is used by the plugin to
-construct the 'displayName' meta property which may be used in some
-user-interface and messaging contexts.
+        This array consists of *channel* objects each of which
+        describes a single channel on the containing switchbank.
+        <dl>
+          <dt>Channel index <code>index</code></dd>
+          <dd>
+            Required number property that identifies this channel on
+            the switchbank.
+            Note that this value must conform to Signal K enumeration
+            (base 1) rather than an NMEA enumeration which is often
+            base 0.
+          </dd>
+          <dt>Channel description <code>description</code></dt>
+          <dd>
+            Optional string describing the switch channel.
+            The supplied value is used by the plugin to construct the
+            metadata 'displayName' roperty which may be used in some
+            user-interface and messaging contexts.
+          </dd>
+        </dl>
+      </dd>
+    </dl>
+  </dd>
+</dl>
 
 ## Operation
 
