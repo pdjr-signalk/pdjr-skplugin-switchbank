@@ -195,7 +195,7 @@ module.exports = function(app) {
               var tryCount = 3;
               var intervalId = setInterval(() => {
                 if (tryCount-- === 0) clearInterval(intervalId);
-                fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": "PUT", "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
+                fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": "POST", "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
                   if (response.status == 200) {
                     updateSuccess = true;
                     clearInterval(intervalId);
