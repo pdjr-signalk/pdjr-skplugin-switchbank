@@ -38,11 +38,17 @@ const PLUGIN_SCHEMA = {
           "title": "Send metadata to this endpoint",
           "type": "string"
         },
+        "method": {
+          "title": "HTTP method to use for send",
+          "type": "string",
+          "enum": [ "PATCH", "POST", "PUT" ]
+        },
         "credentials": {
           "title": "Metadata publisher credentials",
           "type": "string"
         }
-      }
+      },
+      "default": { "method": "POST" }
     },
     "switchbanks" : {
       "title": "Switch bank definitions",
@@ -157,7 +163,7 @@ module.exports = function(app) {
       plugin.options.switchbanks.reduce((a,sb) => (((!(sb.type)) || (sb.type == 'relay'))?(a + 1):a), 0)
     );
 
-    // Publish meta information for all maintained keys.
+    // Create metadata for switchbanks and chanels.
     var metadata = plugin.options.switchbanks.reduce((a,switchbank) => {
       a[`${options.root}${switchbank.instance}`] = {
         instance: switchbank.instance,
@@ -180,37 +186,39 @@ module.exports = function(app) {
       return(a);
     },{});
 
+    // Update Signal K tree with created metadata using a central
+    // service or plain old delta.
     var updateSuccess = false;
-    if ((plugin.options.metadataPublisher) && (plugin.options.metadataPublisher.endpoint) && (plugin.options.metadataPublisher.credentials)) {
-      try {
-        httpInterface.getServerAddress().then((serverAddress) => {
-          console.log(serverAddress);
-          httpInterface.getServerInfo().then((serverInfo) => {
-            console.log(serverInfo);
-            const [ username, password ] = plugin.options.metadataPublisher.credentials.split(':');   
-            httpInterface.getAuthenticationToken(username, password).then((token) => {
-              console.log(token);
-              app.debug(`authenticated as '${username}' with '${serverAddress}' using API '${Object.keys(serverInfo.endpoints)[0]}'`);
-              app.debug(`publishing metadata to '${serverAddress}${plugin.options.metadataPublisher.endpoint}'`);
-              var tryCount = 3;
-              var intervalId = setInterval(() => {
-                if (tryCount-- === 0) clearInterval(intervalId);
-                fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": "POST", "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
-                  if (response.status == 200) {
-                    updateSuccess = true;
+    if (plugin.options.metadataPublisher) {
+      plugin.options.metadataPublisher = { ...plugin.schema.properties.metadataPublisher.default, ...plugin.options.metadataPublisher };
+      if ((plugin.options.metadataPublisher.endpoint) && (plugin.options.metadataPublisher.credentials)) {
+        try {
+          httpInterface.getServerAddress().then((serverAddress) => {
+            httpInterface.getServerInfo().then((serverInfo) => {
+              const [ username, password ] = plugin.options.metadataPublisher.credentials.split(':');   
+              httpInterface.getAuthenticationToken(username, password).then((token) => {
+                app.debug(`authenticated as '${username}' with '${serverAddress}' using API '${Object.keys(serverInfo.endpoints)[0]}'`);
+                app.debug(`publishing metadata to '${serverAddress}${plugin.options.metadataPublisher.endpoint}'`);
+                var tryCount = 3;
+                var intervalId = setInterval(() => {
+                  if (tryCount-- === 0) clearInterval(intervalId);
+                  fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": "POST", "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
+                    if (response.status == 200) {
+                      updateSuccess = true;
+                      clearInterval(intervalId);
+                    } else {
+                      log.E(`error publishing metadata (status ${response.status}); retrying...`, false);
+                    }
+                  }).catch((e) => {
+                    log.E(`unrecoverable error publishing metadata (${e})`, false);
                     clearInterval(intervalId);
-                  } else {
-                    log.E(`error uploading metadata (status ${response.status}); retrying...`);
-                  }
-                }).catch((e) => {
-                  log.E(`unrecoverable error uploading metadata (${e})`);
-                  clearInterval(intervalId);
-                });
-              }, 10000);
+                  });
+                }, 10000);
+              })
             })
           })
-        })
-      } catch(e) { app.debug(`metadata could not be published to '${plugin.options.metadataPublisher}'`)}
+        } catch(e) { app.debug(`metadata could not be published to '${plugin.options.metadataPublisher}'`)}
+      }
     }
     if (!updateSuccess) {
       app.debug(`updating metadata`);
