@@ -32,14 +32,15 @@ const PLUGIN_SCHEMA = {
       "type": "string"
     },
     "metadataPublisher": {
+      "title": "Metadata publication service configuration",
       "type": "object",
       "properties": {
         "endpoint": {
-          "title": "Send metadata to this endpoint",
+          "title": "Metadata publication endpoint",
           "type": "string"
         },
         "method": {
-          "title": "HTTP method to use for send",
+          "title": "Metadata publication method",
           "type": "string",
           "enum": [ "PATCH", "POST", "PUT" ]
         },
@@ -62,23 +63,23 @@ const PLUGIN_SCHEMA = {
             "type": "number", "default": 0, "title": "Switch bank instance"
           },
           "type": {
-            "description": "Whether this switchbanks is a switch input module or a relay output module",
+            "description": "Switchbank type",
             "type": "string", "default": "relay", "enum": [ "switch", "relay" ], "title": "Switch bank type"
           },
           "channelCount": {
             "description": "Number of channels supported by this switchbank",
             "type": "number"
           },
+          "pgn": {
+            "description": "PGN used to update this switchbank",
+            "type": "string"
+          },
           "description": {
             "description": "Text describing the module (serial no, intall location, etc)",
             "type": "string", "default": "", "title": "Switch bank description"
           },
-          "PGN": {
-            "description": "PGN used to update the switchbank",
-            "type": "string"
-          },
           "channels": {
-            "title": "Switch bank channels",
+            "title": "Switchbank channels",
             "type": "array",
             "items": {
               "type": "object",
