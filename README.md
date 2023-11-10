@@ -114,7 +114,7 @@ function or application.
         This array consists of *channel* objects each of which
         describes a single channel on the containing switchbank.
         <dl>
-          <dt>Channel index <code>index</code></dd>
+          <dt>Channel index <code>index</code></dt>
           <dd>
             Required number property that identifies this channel on
             the switchbank.
