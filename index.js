@@ -170,8 +170,10 @@ module.exports = function(app) {
 
     // Create and install metadata
     createMetadata((metadata) => {
+      app.debug(`Created metadata object: ${JSON.stringify(metadata, null, 2)}`);
       if (metadata) {
         if (plugin.options.metadataPublisher) {
+          app.debug(`Publishing metadata using ${plugin.options.metadataPublisher.method} to '${plugin.options.metadataPublisher.endpoint}'`);
           try {
             publishMetadata(metadata);
             metadata = null;
@@ -180,6 +182,7 @@ module.exports = function(app) {
           }
         }
         if (metadata) {
+          app.debug(`Injecting metadata using delta update`);
           (new Delta(app, plugin.id)).addMetas(metadata).commit().clear();
         }
       }
