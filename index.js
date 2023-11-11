@@ -202,7 +202,7 @@ module.exports = function(app) {
   // Create a metadata digest object and return it through callback().
   function createMetadata(callback) {
     callback(plugin.options.switchbanks.reduce((a,switchbank) => {
-      a[`${options.root}${switchbank.instance}`] = {
+      a[`${plugin.options.root}${switchbank.instance}`] = {
         instance: switchbank.instance,
         type: switchbank.type,
         description: switchbank.description,
@@ -210,7 +210,7 @@ module.exports = function(app) {
         $source: `plugin:${plugin.id}`,
       }
       switchbank.channels.forEach(channel => {
-        a[`${options.root}${switchbank.instance}.${channel.index}.state`] = {
+        a[`${plugin.options.root}${switchbank.instance}.${channel.index}.state`] = {
           description: `Binary ${switchbank.type} state (0 = OFF, 1 = ON)`,
           type: switchbank.type,
           shortName: `[${switchbank.instance},${channel.index}]`,
