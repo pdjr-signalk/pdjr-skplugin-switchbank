@@ -170,26 +170,11 @@ module.exports = function(app) {
     );
 
     // Create and install metadata
-    createMetadata((metadata) => {
-      app.debug(`Created metadata object: ${JSON.stringify(metadata, null, 2)}`);
-      if (metadata) {
-        if (plugin.options.metadataPublisher) {
-          app.debug(`Publishing metadata using ${plugin.options.metadataPublisher.method} to '${plugin.options.metadataPublisher.endpoint}'`);
-          try {
-            publishMetadata(metadata, () => {
-              app.debug('Metadata published OK');
-              metadata = null;
-            });
-          } catch(e) {
-            log.N(`Failed to publish metadata (${e.message})`, false);
-          }
-        }
-        if (metadata) {
-          app.debug(`Injecting metadata using delta update`);
-          (new Delta(app, plugin.id)).addMetas(metadata).commit().clear();
-        }
+    publishMetadata(createMetadata(), plugin.options.metadataPublisher, (e) => {
+      if (e) {
+        (new Delta(app, plugin.id)).addMetas(metadata).commit().clear();
       }
-    });
+    }
 
     // Register a put handler for all switch bank relay channels.
     plugin.options.switchbanks.filter(sb => (sb.type == 'relay')).forEach(switchbank => {
@@ -206,8 +191,8 @@ module.exports = function(app) {
   }
 
   // Create a metadata digest object and return it through callback().
-  function createMetadata(callback) {
-    callback(plugin.options.switchbanks.reduce((a,switchbank) => {
+  function createMetadata() {
+    return(plugin.options.switchbanks.reduce((a,switchbank) => {
       a[`${plugin.options.root}${switchbank.instance}`] = {
         instance: switchbank.instance,
         type: switchbank.type,
@@ -230,8 +215,8 @@ module.exports = function(app) {
     },{}));
   }
 
-  function publishMetadata(metadata, callback, options={ retries: 3, interval: 10000 }) {
-    if ((plugin.options.metadataPublisher.endpoint) && (plugin.options.metadataPublisher.method) && (plugin.options.metadataPublisher.credentials)) {
+  function publishMetadata(metadata, publisher, callback, options={ retries: 3, interval: 10000 }) {
+    if ((publisher) && (publisher.endpoint) && (publisher.method) && (publisher.credentials)) {
       const httpInterface = new HttpInterface(app.getSelfPath('uuid'));
       httpInterface.getServerAddress().then((serverAddress) => {
         httpInterface.getServerInfo().then((serverInfo) => {
@@ -240,7 +225,7 @@ module.exports = function(app) {
             const intervalId = setInterval(() => {
               if (options.retries-- === 0) {
                 clearInterval(intervalId);
-                throw new Error(`tried ${options.interval} times with no success`);
+                callback(new Error(`tried ${options.interval} times with no success`));
               }
               fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": plugin.options.metadataPublisher.method, "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
                 if (response.status == 200) {
@@ -249,14 +234,14 @@ module.exports = function(app) {
                 }
               }).catch((e) => {
                 clearInterval(intervalId);
-                throw new Error(e);
+                callback(new Error(e));
               });
             }, options.interval);
           })
         })
       })
     } else {
-      throw new Error(`'metadataPublisher' configuration is invalid`);
+      callback(new Error(`'metadataPublisher' configuration is invalid`));
     }
   }
 
