@@ -34,8 +34,10 @@ application.
     Optional object configuring access to a remote metadata publication
     service (a suitable service is implemented by the author's
     <a href='https://github.com/pdjr-signalk/pdjr-skplugin-metadata#readme'>metadata plugin</a>.
-    If omitted, then the plugin will inject metadata directly into the
-    Signal K tree.
+    <p>
+    If this property is omitted, or if, for whatever reason, metadata cannot
+    be published to the specified service then the plugin will inject metadata
+    directly into the Signal K tree.</p>
     <dl>
       <dt>Metadata publication endpoint <code>endpoint</code></dt>
       <dd>
