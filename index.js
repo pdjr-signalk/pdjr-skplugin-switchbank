@@ -177,9 +177,10 @@ module.exports = function(app) {
           app.debug(`Publishing metadata using ${plugin.options.metadataPublisher.method} to '${plugin.options.metadataPublisher.endpoint}'`);
           try {
             publishMetadata(metadata);
+            app.debug('Metadata published OK');
             metadata = null;
           } catch(e) {
-            log.N(`Failed to publish metadata to '${plugin.options.metadataPublisher.endpoint}' (${e.message})`, false);
+            log.N(`Failed to publish metadata (${e.message})`, false);
           }
         }
         if (metadata) {
