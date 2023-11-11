@@ -173,7 +173,7 @@ module.exports = function(app) {
     publishMetadata(createMetadata(), plugin.options.metadataPublisher, (e) => {
       if (e) {
         log.W(`publish failed (${e.message})`, false);
-        (new Delta(app, plugin.id)).addMetas(metadata).commit().clear();
+        (new Delta(app, plugin.id)).addMetas(createMetadata()).commit().clear();
       } else {
         log.N(`metadata published to '${plugin.options.metadataPublisher.endpoint}'`, false);
       }
