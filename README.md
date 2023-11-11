@@ -34,7 +34,8 @@ function or application.
   <dt>Metadata publication service configuration <code>metadataPublisher</code></dt>
   <dd>
     Optional object configuring access to a remote metadata publication
-    service.
+    service (a suitable service is implemented by the author's
+    <a href='https://github.com/pdjr-signalk/pdjr-skplugin-metadata#readme'>metadata plugin</a>.
     If omitted, then the plugin will inject metadata directly into the
     Signal K tree.
     <dl>
