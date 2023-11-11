@@ -8,12 +8,10 @@ NMEA 2000 switchbank support.
 physical relay output devices in response to state changes on their
 associated Signal K switchbank model.
 
-Each time a state change happens on a relay output channel in Signal K
-the plugin operates a configured remote relay using either NMEA 2000
-*PGN 127502 Switch Bank Control*
-or
-*PGN ?????? WTF is this*.
-control messages.
+Each time a Signal K PUT request is received on a configured relay
+output channel the plugin issues an NMEA 2000 *PGN 127502 Switch Bank
+Control* message (or a *PGN ?????? WTF is this* message) to operate
+the remote relay.
 
 The plugin also provides a mechanism for decorating Signal K's
 'electrical.switches.' hierarchy with user supplied metadata allowing
@@ -140,8 +138,12 @@ application.
 
 The plugin must be configured before it can enter production.
 
-Each time the put handler is invoked the transmitted NMEA output
-is displayed on the Signal K dashboard.
+As soon as the plugin starts, metadata for all configured switchbanks
+and channels is injected into Signal K.
+PUT handlers are installed on all configured relay output channels.
+
+Each time a PUT request is received on a configured channel the
+transmitted NMEA output is displayed on the Signal K dashboard.
 
 ## Author
 
