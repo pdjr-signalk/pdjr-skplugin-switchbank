@@ -114,6 +114,7 @@ const PLUGIN_SCHEMA = {
   "required": [ "switchbanks" ],
   "default": {
     "root": "electrical.switches.bank.",
+    "metadataPublisher": { "method": "POST" },
     "switchbanks": []
   }
 };
@@ -228,8 +229,7 @@ module.exports = function(app) {
   }
 
   function publishMetadata(metadata, options={ retries: 3, interval: 10000 }) {
-    plugin.options.metadataPublisher = { ...plugin.schema.properties.metadataPublisher.default, ...plugin.options.metadataPublisher };
-    if ((plugin.options.metadataPublisher.endpoint) && (plugin.options.metadataPublisher.credentials)) {
+    if ((plugin.options.metadataPublisher.endpoint) && (plugin.options.metadataPublisher.method) && (plugin.options.metadataPublisher.credentials)) {
       const httpInterface = new HttpInterface(app.getSelfPath('uuid'));
       httpInterface.getServerAddress().then((serverAddress) => {
         httpInterface.getServerInfo().then((serverInfo) => {
@@ -240,7 +240,7 @@ module.exports = function(app) {
                 clearInterval(intervalId);
                 throw new Error(`tried ${options.interval} times with no success`);
               }
-              fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": "POST", "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
+              fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": plugin.options.metadataPublisher.method, "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
                 if (response.status == 200) {
                   clearInterval(intervalId);
                 }
