@@ -4,9 +4,9 @@ NMEA 2000 switchbank support.
 
 ## Description
 
-**pdjr-signalk-switchbank** implements an interface between the logical
-switchbanks implemented in Signal K and physical relay output devices
-which conform to the NMEA 2000 switchbank model.
+**pdjr-signalk-switchbank** operates relays on NMEA 2000 compliant
+physical relay output devices in response to state changes on their
+associated Signal K switchbank model.
 
 Each time a state change happens on a relay output channel in Signal K
 the plugin operates a configured remote relay using either NMEA 2000
@@ -15,12 +15,12 @@ or
 *PGN ?????? WTF is this*.
 control messages.
 
-Additionally, the plugin provides a mechanism for decorating Signal K's
-'electrical.switches.' hierarchy with user supplied metadata.
-This allows Signal K switchbanks to be documented in a meaningful way
-(perhaps including the device location, product code, serial-number,
-etc.) and switch/relay channels to be described in terms of their
-function or application.
+The plugin also provides a mechanism for decorating Signal K's
+'electrical.switches.' hierarchy with user supplied metadata allowing
+Signal K switchbanks to be documented in a meaningful way (perhaps
+including the device location, product code, serial-number, etc.) and
+switch/relay channels to be described in terms of their function or
+application.
 
 ## Configuration
 
@@ -141,7 +141,7 @@ function or application.
 The plugin must be configured before it can enter production.
 
 Each time the put handler is invoked the transmitted NMEA output
-will be displayed on the Signal K dashboard.
+is displayed on the Signal K dashboard.
 
 ## Author
 
