@@ -228,7 +228,7 @@ module.exports = function(app) {
             const intervalId = setInterval(() => {
               if (options.retries-- === 0) {
                 clearInterval(intervalId);
-                callback(new Error(`tried ${options.interval} times with no success`));
+                callback(new Error(`tried ${options.retries} times with no success`));
               }
               fetch(`${serverAddress}${publisher.endpoint}`, { "method": publisher.method, "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
                 if (response.status == 200) {
