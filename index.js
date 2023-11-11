@@ -176,9 +176,10 @@ module.exports = function(app) {
         if (plugin.options.metadataPublisher) {
           app.debug(`Publishing metadata using ${plugin.options.metadataPublisher.method} to '${plugin.options.metadataPublisher.endpoint}'`);
           try {
-            publishMetadata(metadata);
-            app.debug('Metadata published OK');
-            metadata = null;
+            publishMetadata(metadata, () => {
+              app.debug('Metadata published OK');
+              metadata = null;
+            });
           } catch(e) {
             log.N(`Failed to publish metadata (${e.message})`, false);
           }
@@ -229,7 +230,7 @@ module.exports = function(app) {
     },{}));
   }
 
-  function publishMetadata(metadata, options={ retries: 3, interval: 10000 }) {
+  function publishMetadata(metadata, callback, options={ retries: 3, interval: 10000 }) {
     if ((plugin.options.metadataPublisher.endpoint) && (plugin.options.metadataPublisher.method) && (plugin.options.metadataPublisher.credentials)) {
       const httpInterface = new HttpInterface(app.getSelfPath('uuid'));
       httpInterface.getServerAddress().then((serverAddress) => {
@@ -244,6 +245,7 @@ module.exports = function(app) {
               fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": plugin.options.metadataPublisher.method, "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
                 if (response.status == 200) {
                   clearInterval(intervalId);
+                  callback();
                 }
               }).catch((e) => {
                 clearInterval(intervalId);
