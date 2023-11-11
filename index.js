@@ -172,9 +172,10 @@ module.exports = function(app) {
     // Create and install metadata
     publishMetadata(createMetadata(), plugin.options.metadataPublisher, (e) => {
       if (e) {
+        log.W(`publish failed (${e.message})`);
         (new Delta(app, plugin.id)).addMetas(metadata).commit().clear();
       }
-    }
+    });
 
     // Register a put handler for all switch bank relay channels.
     plugin.options.switchbanks.filter(sb => (sb.type == 'relay')).forEach(switchbank => {
