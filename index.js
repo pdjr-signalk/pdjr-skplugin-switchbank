@@ -131,8 +131,6 @@ module.exports = function(app) {
   plugin.uiSchema = PLUGIN_UISCHEMA;
 
   const log = new Log(plugin.id, { ncallback: app.setPluginStatus, ecallback: app.setPluginError });
-  const delta = new Delta(app, plugin.id);
-
 
   plugin.start = function(options) {
     plugin.options = _.cloneDeep(plugin.schema.default);
@@ -193,7 +191,7 @@ module.exports = function(app) {
 	  unsubscribes = [];
   }
 
-  // Create a metadata digest object and return it through callback().
+  // Create and return a metadata digest object.
   function createMetadata() {
     return(plugin.options.switchbanks.reduce((a,switchbank) => {
       a[`${plugin.options.root}${switchbank.instance}`] = {
@@ -218,6 +216,7 @@ module.exports = function(app) {
     },{}));
   }
 
+  // Publish metadata object to publisher.
   function publishMetadata(metadata, publisher, callback, options={ retries: 3, interval: 10000 }) {
     if ((publisher) && (publisher.endpoint) && (publisher.method) && (publisher.credentials)) {
       const httpInterface = new HttpInterface(app.getSelfPath('uuid'));
