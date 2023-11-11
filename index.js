@@ -131,7 +131,6 @@ module.exports = function(app) {
 
   const log = new Log(plugin.id, { ncallback: app.setPluginStatus, ecallback: app.setPluginError });
   const delta = new Delta(app, plugin.id);
-  const httpInterface = new HttpInterface(app.getSelfPath('uuid'));
 
 
   plugin.start = function(options) {
@@ -169,8 +168,40 @@ module.exports = function(app) {
       plugin.options.switchbanks.reduce((a,sb) => (((!(sb.type)) || (sb.type == 'relay'))?(a + 1):a), 0)
     );
 
-    // Create metadata for switchbanks and chanels.
-    var metadata = plugin.options.switchbanks.reduce((a,switchbank) => {
+    // Create and install metadata
+    createMetadata((metadata) => {
+      if (metadata) {
+        if (plugin.options.metadataPublisher) {
+          try {
+            publishMetadata(metadata);
+            metadata = null;
+          } catch(e) {
+            log.N(`Failed to publish metadata to '${plugin.options.metadataPublisher.endpoint}' (${e.message})`, false);
+          }
+        }
+        if (metadata) {
+          (new Delta(app, plugin.id)).addMetas(metadata).commit().clear();
+        }
+      }
+    });
+
+    // Register a put handler for all switch bank relay channels.
+    plugin.options.switchbanks.filter(sb => (sb.type == 'relay')).forEach(switchbank => {
+      switchbank.channels.forEach(channel => {
+        app.debug(`installing put handler for '${channel.path}'`);
+        app.registerPutHandler('vessels.self', channel.path, putHandler, plugin.id);
+      });
+    });
+  }
+
+  plugin.stop = function() {
+	  unsubscribes.forEach(f => f());
+	  unsubscribes = [];
+  }
+
+  // Create a metadata digest object and return it through callback().
+  function createMetadata(callback) {
+    callback(plugin.options.switchbanks.reduce((a,switchbank) => {
       a[`${options.root}${switchbank.instance}`] = {
         instance: switchbank.instance,
         type: switchbank.type,
@@ -190,59 +221,37 @@ module.exports = function(app) {
         }
       });
       return(a);
-    },{});
-
-    // Update Signal K tree with created metadata using a central
-    // service or plain old delta.
-    var updateSuccess = false;
-    if (plugin.options.metadataPublisher) {
-      plugin.options.metadataPublisher = { ...plugin.schema.properties.metadataPublisher.default, ...plugin.options.metadataPublisher };
-      if ((plugin.options.metadataPublisher.endpoint) && (plugin.options.metadataPublisher.credentials)) {
-        try {
-          httpInterface.getServerAddress().then((serverAddress) => {
-            httpInterface.getServerInfo().then((serverInfo) => {
-              const [ username, password ] = plugin.options.metadataPublisher.credentials.split(':');   
-              httpInterface.getAuthenticationToken(username, password).then((token) => {
-                app.debug(`authenticated as '${username}' with '${serverAddress}' using API '${Object.keys(serverInfo.endpoints)[0]}'`);
-                app.debug(`publishing metadata to '${serverAddress}${plugin.options.metadataPublisher.endpoint}'`);
-                var tryCount = 3;
-                var intervalId = setInterval(() => {
-                  if (tryCount-- === 0) clearInterval(intervalId);
-                  fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": "POST", "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
-                    if (response.status == 200) {
-                      updateSuccess = true;
-                      clearInterval(intervalId);
-                    } else {
-                      log.E(`error publishing metadata (status ${response.status}); retrying...`, false);
-                    }
-                  }).catch((e) => {
-                    log.E(`unrecoverable error publishing metadata (${e})`, false);
-                    clearInterval(intervalId);
-                  });
-                }, 10000);
-              })
-            })
-          })
-        } catch(e) { app.debug(`metadata could not be published to '${plugin.options.metadataPublisher}'`)}
-      }
-    }
-    if (!updateSuccess) {
-      app.debug(`updating metadata`);
-      delta.addMetas(metadata).commit().clear();
-    }
-
-    // Register a put handler for all switch bank relay channels.
-    plugin.options.switchbanks.filter(sb => (sb.type == 'relay')).forEach(switchbank => {
-      switchbank.channels.forEach(channel => {
-        app.debug(`installing put handler for '${channel.path}'`);
-        app.registerPutHandler('vessels.self', channel.path, putHandler, plugin.id);
-      });
-    });
+    },{}));
   }
 
-  plugin.stop = function() {
-	  unsubscribes.forEach(f => f());
-	  unsubscribes = [];
+  function publishMetadata(metadata, options={ retries: 3, interval: 10000 }) {
+    plugin.options.metadataPublisher = { ...plugin.schema.properties.metadataPublisher.default, ...plugin.options.metadataPublisher };
+    if ((plugin.options.metadataPublisher.endpoint) && (plugin.options.metadataPublisher.credentials)) {
+      const httpInterface = new HttpInterface(app.getSelfPath('uuid'));
+      httpInterface.getServerAddress().then((serverAddress) => {
+        httpInterface.getServerInfo().then((serverInfo) => {
+          const [ username, password ] = plugin.options.metadataPublisher.credentials.split(':');   
+          httpInterface.getAuthenticationToken(username, password).then((token) => {
+            const intervalId = setInterval(() => {
+              if (options.retries-- === 0) {
+                clearInterval(intervalId);
+                throw new Error(`tried ${options.interval} times with no success`);
+              }
+              fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": "POST", "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
+                if (response.status == 200) {
+                  clearInterval(intervalId);
+                }
+              }).catch((e) => {
+                clearInterval(intervalId);
+                throw new Error(e);
+              });
+            }, options.interval);
+          })
+        })
+      })
+    } else {
+      throw new Error(`'metadataPublisher' configuration is invalid`);
+    }
   }
 
   /**
