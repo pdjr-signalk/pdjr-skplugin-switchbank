@@ -172,8 +172,10 @@ module.exports = function(app) {
     // Create and install metadata
     publishMetadata(createMetadata(), plugin.options.metadataPublisher, (e) => {
       if (e) {
-        log.W(`publish failed (${e.message})`);
+        log.W(`publish failed (${e.message})`, false);
         (new Delta(app, plugin.id)).addMetas(metadata).commit().clear();
+      } else {
+        log.N(`metadata published to '${plugin.options.metadataPublisher.endpoint}'`, false);
       }
     });
 
@@ -221,14 +223,14 @@ module.exports = function(app) {
       const httpInterface = new HttpInterface(app.getSelfPath('uuid'));
       httpInterface.getServerAddress().then((serverAddress) => {
         httpInterface.getServerInfo().then((serverInfo) => {
-          const [ username, password ] = plugin.options.metadataPublisher.credentials.split(':');   
+          const [ username, password ] = publisher.credentials.split(':');   
           httpInterface.getAuthenticationToken(username, password).then((token) => {
             const intervalId = setInterval(() => {
               if (options.retries-- === 0) {
                 clearInterval(intervalId);
                 callback(new Error(`tried ${options.interval} times with no success`));
               }
-              fetch(`${serverAddress}${plugin.options.metadataPublisher.endpoint}`, { "method": plugin.options.metadataPublisher.method, "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
+              fetch(`${serverAddress}${publisher.endpoint}`, { "method": publisher.method, "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
                 if (response.status == 200) {
                   clearInterval(intervalId);
                   callback();
