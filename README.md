@@ -140,11 +140,12 @@ to be described in terms of their function or application.
 The plugin must be configured before it can enter production.
 
 As soon as the plugin starts, metadata for all configured switchbanks
-and channels is injected into Signal K.
-PUT handlers are installed on all configured relay output channels.
+and channels is injected into Signal K and PUT handlers are installed
+on all configured relay output channels.
 
-Each time a PUT request is received on a configured channel the
-transmitted NMEA output is displayed on the Signal K dashboard.
+Each time a PUT request triggers a state change on a configured channel
+the NMEA message issued by the plugin is displayed on the Signal K
+dashboard.
 
 ## Author
 
