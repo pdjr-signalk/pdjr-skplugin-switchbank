@@ -313,6 +313,7 @@ module.exports = function(app) {
       var sbtext = `\n0x${('0' + switchbank.instance.toString(16)).substr(-2)} ${switchbank.channelCount} CHANNEL ${switchbank.type.toUpperCase()} SWITCHBANK\n`;
       var sbtext = sbtext + switchbank.description;
       var sbtext = sbtext + '\n';
+      return(sbtext);
     }).join('\n');
     res.set('Content-Type', 'text/plain');
     expressSend(res, 200, inventory, req.path);
