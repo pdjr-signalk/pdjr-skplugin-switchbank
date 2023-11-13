@@ -312,7 +312,7 @@ module.exports = function(app) {
     var inventory = inventory + plugin.options.switchbanks.map(switchbank => {
       return(`## ${switchbank.instance} ${switchbank.channelCount} channel ${switchbank.type}`);
     }).join('\n');
-    res.set('Content-type', 'text/markdown');
+    res.set('Content-Type', 'text/markdown');
     expressSend(res, 200, inventory, req.path);
   }
 
