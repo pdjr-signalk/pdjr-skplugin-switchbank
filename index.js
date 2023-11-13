@@ -310,7 +310,9 @@ module.exports = function(app) {
   expressGetInventory = function(req, res) {
     var inventory = 'SWITCHBANK INVENTORY\n';
     var inventory = inventory + plugin.options.switchbanks.map(switchbank => {
-      return(`\n0x${('0' + switchbank.instance.toString(16)).substr(-2)} ${switchbank.channelCount} CHANNEL ${switchbank.type.toUpperCase()} SWITCHBANK`);
+      var sbtext = `\n0x${('0' + switchbank.instance.toString(16)).substr(-2)} ${switchbank.channelCount} CHANNEL ${switchbank.type.toUpperCase()} SWITCHBANK\n`;
+      var sbtext = sbtext + switchbank.description;
+      var sbtext = sbtext + '\n';
     }).join('\n');
     res.set('Content-Type', 'text/plain');
     expressSend(res, 200, inventory, req.path);
