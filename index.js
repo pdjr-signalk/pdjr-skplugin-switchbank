@@ -191,6 +191,10 @@ module.exports = function(app) {
 	  unsubscribes = [];
   }
 
+  plugin.registerWithRouter = function(router) {
+    router.get('/inventory', (req,res) => handleExpress(req, res, expressGetInventory));
+  }
+
   // Create and return a metadata digest object.
   function createMetadata() {
     return(plugin.options.switchbanks.reduce((a,switchbank) => {
@@ -297,6 +301,28 @@ module.exports = function(app) {
     }
     return({ state: 'COMPLETED', statusCode: 200 });
   }
+
+  handleExpress = function(req, res, handler) {
+    app.debug(`processing ${req.method} request on '${req.path}`);
+    handler(req, res);
+  }
+
+  expressGetInventory = function(req, res) {
+    var inventory = '#Switchbank inventory\n';
+    var inventory = inventory + plugin.options.switchbanks.map(switchbank => {
+      return(`## ${switchbank.instance} ${switchbank.channelCount} channel ${switchbank.type}`);
+    }).join('\n');
+    res.type = 'text/markdown';
+    express.send(res, 200, inventory, req.path);
+  }
+
+  expressSend = function(res, code, body = null, debugPrefix = null) {
+    res.status(code).send((body)?body:((FETCH_RESPONSES[code])?FETCH_RESPONSES[code]:null));
+    if (debugPrefix) app.debug("%s: %d %s", debugPrefix, code, ((body)?JSON.stringify(body):((FETCH_RESPONSES[code])?FETCH_RESPONSES[code]:null)));
+    return(false);
+  }
+
+
 
   return(plugin);
 }
