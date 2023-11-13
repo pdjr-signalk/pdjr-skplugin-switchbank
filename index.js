@@ -313,7 +313,7 @@ module.exports = function(app) {
       return(`## ${switchbank.instance} ${switchbank.channelCount} channel ${switchbank.type}`);
     }).join('\n');
     res.type = 'text/markdown';
-    express.send(res, 200, inventory, req.path);
+    expressSend(res, 200, inventory, req.path);
   }
 
   expressSend = function(res, code, body = null, debugPrefix = null) {
