@@ -5,7 +5,10 @@
   "main": "index.js",
   "signalk-plugin-enabled-by-default": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\""
+    "publish": "yq -o=json -I=2 resources/openApi.yaml > resources/openApi.json",
+    "test": "echo \"Error: no test specified\"",
+    "build": "tsc",
+    "prepare": "tsc"
   },
   "repository": {
     "type": "git",
@@ -24,6 +27,7 @@
   },
   "homepage": "https://github.com/pdjr-signalk/pdjr-skplugin-switchbank#readme",
   "dependencies": {
+    "@types/node": "^22.5.4",
     "lodash": "^4.17.21",
     "signalk-libdelta": "github:pdjr-signalk/signalk-libdelta",
     "signalk-libhttpinterface": "github:pdjr-signalk/signalk-libhttpinterface",
