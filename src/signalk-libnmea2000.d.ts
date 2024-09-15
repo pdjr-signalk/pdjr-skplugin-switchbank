@@ -1,0 +1,1 @@
+declare module 'signalk-libnmea2000/Nmea2000.js'

@@ -1,0 +1,1 @@
+declare module 'signalk-libhttpinterface/HttpInterface.js'
