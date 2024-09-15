@@ -16,15 +16,14 @@
 
 const _ = require('lodash');
 const Delta = require('signalk-libdelta/Delta.js');
-const Log = require('signalk-liblog/Log.js');
 const Nmea2000 = require('signalk-libnmea2000/Nmea2000.js');
 const HttpInterface = require('signalk-libhttpinterface/HttpInterface.js');
 
 
-const PLUGIN_ID = 'switchbank';
-const PLUGIN_NAME = 'pdjr-skplugin-switchbank';
-const PLUGIN_DESCRIPTION = 'N2K switchbank interface';
-const PLUGIN_SCHEMA = {
+const PLUGIN_ID: string = 'switchbank'
+const PLUGIN_NAME: string = 'pdjr-skplugin-switchbank'
+const PLUGIN_DESCRIPTION: string = 'N2K switchbank interface'
+const PLUGIN_SCHEMA: any = {
   "type": "object",
   "properties": {
     "root": {
@@ -117,186 +116,203 @@ const PLUGIN_SCHEMA = {
     "metadataPublisher": { "method": "POST" },
     "switchbanks": []
   }
-};
-const PLUGIN_UISCHEMA = {};
+}
+const PLUGIN_UISCHEMA: any = {}
 
-module.exports = function(app) {
-  var plugin = {};
-  var unsubscribes = [];
+module.exports = function(app: any) {
+  let unsubscribes: (() => void)[] = []
 
-  plugin.id = PLUGIN_ID;
-  plugin.name = PLUGIN_NAME;
-  plugin.description = PLUGIN_DESCRIPTION;
-  plugin.schema = PLUGIN_SCHEMA;
-  plugin.uiSchema = PLUGIN_UISCHEMA;
+  const plugin: SKPlugin = {
 
-  const log = new Log(plugin.id, { ncallback: app.setPluginStatus, ecallback: app.setPluginError });
+    id: PLUGIN_ID,
+    name: PLUGIN_NAME,
+    description: PLUGIN_DESCRIPTION,
+    schema: PLUGIN_SCHEMA,
+    uiSchema: PLUGIN_UISCHEMA,
+    options: {},
+    
+    start: function(options: any) {
+      plugin.options = _.cloneDeep(plugin.schema.default);
+      _.merge(plugin.options, options);
+      plugin.options.switchbanks = plugin.options.switchbanks.reduce((a: any, switchbank: any) => {
+        try {
+          var validSwitchbank = _.cloneDeep(plugin.schema.properties.switchbanks.items.default);
+          _.merge(validSwitchbank, switchbank);
+          if (!validSwitchbank.instance) throw new Error("missing switchbank 'instance' property");
+          validSwitchbank.channels = validSwitchbank.channels.reduce((a: any,channel: any) => {
+            try {
+              var validChannel = { ...plugin.schema.properties.switchbanks.items.properties.channels.items.default, ...channel };
+              if (validChannel.index === undefined) throw new Error("missing channel 'index' property");
+              a.push(validChannel);
+            } catch(e) { if (e instanceof Error) app.setPluginError(`dropping channel  (${e.message})`); }
+            return(a);
+          }, []);
+          a.push(validSwitchbank);
+        } catch(e) { if (e instanceof Error) app.setPluginError(`dropping switchbank (${e.message})`); }
+        return(a);
+      }, [])
 
-  plugin.start = function(options) {
-    plugin.options = _.cloneDeep(plugin.schema.default);
-    _.merge(plugin.options, options);
-    plugin.options.switchbanks = plugin.options.switchbanks.reduce((a,switchbank) => {
-      try {
-        var validSwitchbank = _.cloneDeep(plugin.schema.properties.switchbanks.items.default);
-        _.merge(validSwitchbank, switchbank);
-        if (!validSwitchbank.instance) throw new Error("missing switchbank 'instance' property");
-        validSwitchbank.channels = validSwitchbank.channels.reduce((a,channel) => {
-          try {
-            var validChannel = { ...plugin.schema.properties.switchbanks.items.properties.channels.items.default, ...channel };
-            if (validChannel.index === undefined) throw new Error("missing channel 'index' property");
-            a.push(validChannel);
-          } catch(e) { log.W(`dropping channel  (${e.message})`); }
-          return(a);
-        }, []);
-        a.push(validSwitchbank);
-      } catch(e) { log.W(`dropping switchbank (${e.message})`); }
-      return(a);
-    }, [])
-
-    plugin.options.switchbanks.forEach(switchbank => {
-      switchbank.channels.forEach(channel => {
-        channel.path = `${plugin.options.root}${switchbank.instance}.${channel.index}.state`;
-      });
-    });
-
-    app.debug(`using configuration: ${JSON.stringify(plugin.options, null, 2)}`);
-        
-    log.N(
-      "operating %d switch and %d relay switch banks",
-      plugin.options.switchbanks.reduce((a,sb) => (((sb.type) && (sb.type == 'switch'))?(a + 1):a), 0),
-      plugin.options.switchbanks.reduce((a,sb) => (((!(sb.type)) || (sb.type == 'relay'))?(a + 1):a), 0)
-    );
-
-    // Create and install metadata
-    publishMetadata(createMetadata(), plugin.options.metadataPublisher, (e) => {
-      if (e) {
-        log.W(`publish failed (${e.message})`, false);
-        (new Delta(app, plugin.id)).addMetas(createMetadata()).commit().clear();
-      } else {
-        log.N(`metadata published to '${plugin.options.metadataPublisher.endpoint}'`, false);
-      }
-    });
-
-    // Register a put handler for all switch bank relay channels.
-    plugin.options.switchbanks.filter(sb => (sb.type == 'relay')).forEach(switchbank => {
-      switchbank.channels.forEach(channel => {
-        app.debug(`installing put handler for '${channel.path}'`);
-        app.registerPutHandler('vessels.self', channel.path, putHandler, plugin.id);
-      });
-    });
-  }
-
-  plugin.stop = function() {
-	  unsubscribes.forEach(f => f());
-	  unsubscribes = [];
-  }
-
-  // Create and return a metadata digest object.
-  function createMetadata() {
-    return(plugin.options.switchbanks.reduce((a,switchbank) => {
-      a[`${plugin.options.root}${switchbank.instance}`] = {
-        instance: switchbank.instance,
-        type: switchbank.type,
-        description: switchbank.description,
-        channelCount: switchbank.channelCount,
-        $source: `plugin:${plugin.id}`,
-      }
-      switchbank.channels.forEach(channel => {
-        a[`${plugin.options.root}${switchbank.instance}.${channel.index}.state`] = {
-          description: `Binary ${switchbank.type} state (0 = OFF, 1 = ON)`,
-          type: switchbank.type,
-          shortName: `[${switchbank.instance},${channel.index}]`,
-          displayName: channel.description,
-          longName: `${channel.description} [${switchbank.instance},${channel.index}]`,
-          timeout: 10000,
-          $source: `plugin:${plugin.id}` 
-        }
-      });
-      return(a);
-    },{}));
-  }
-
-  // Publish metadata object to publisher.
-  function publishMetadata(metadata, publisher, callback, options={ retries: 3, interval: 10000 }) {
-    if ((publisher) && (publisher.endpoint) && (publisher.method) && (publisher.credentials)) {
-      const httpInterface = new HttpInterface(app.getSelfPath('uuid'));
-      httpInterface.getServerAddress().then((serverAddress) => {
-        httpInterface.getServerInfo().then((serverInfo) => {
-          const [ username, password ] = publisher.credentials.split(':');   
-          httpInterface.getAuthenticationToken(username, password).then((token) => {
-            const intervalId = setInterval(() => {
-              if (options.retries-- === 0) {
-                clearInterval(intervalId);
-                callback(new Error(`tried ${options.retries} times with no success`));
-              }
-              fetch(`${serverAddress}${publisher.endpoint}`, { "method": publisher.method, "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
-                if (response.status == 200) {
-                  clearInterval(intervalId);
-                  callback();
-                }
-              }).catch((e) => {
-                clearInterval(intervalId);
-                callback(new Error(e));
-              });
-            }, options.interval);
-          })
+      plugin.options.switchbanks.forEach((switchbank: any) => {
+        switchbank.channels.forEach((channel: any) => {
+          channel.path = `${plugin.options.root}${switchbank.instance}.${channel.index}.state`
         })
       })
-    } else {
-      callback(new Error(`'metadataPublisher' configuration is invalid`));
-    }
-  }
 
-  /**
-   * Process a put request for switchbank state change. Signal K does
-   * not pass a handle to the request source and since we want to
-   * process requests emanating from physical switches differently to
-   * requests emanating from virtual devices, we need a work-around.
-   *
-   * So, we extend what constitutes a value (normally 0 or 1) to allow
-   * values 2 and 3 for virtual OFF and ON.
-   * 
-   * @param {*} context 
-   * @param {*} path 
-   * @param {*} value 
-   * @param {*} callback 
-   * @returns 
-   */
-  function putHandler(context, path, value, callback) {
-    app.debug(`processing put request (path = ${path}, value = ${value})`);
-    var parts = path.split('.') || [];
-    if ((!isNaN(parts[3])) && (!isNaN(parseFloat(parts[3])))) {
-      var instance = parseInt(parts[3]);
-      if ((instance >= 0) && (instance <= 0xFE)) {
-        if ((!isNaN(parts[4])) && (!isNaN(parseFloat(parts[4])))) {
-          var channel = parseInt(parts[4]);
-          if  ((channel >= 1) && (channel <= 28)) {
-            if ((!isNaN(value)) && (!isNaN(parseFloat(value)))) {
-              value = parseInt(value);
-              if ((value == 0) || (value == 1) || (value == 2) || (value == 3)) {
-                var message = Nmea2000.makeMessagePGN127502(instance, (channel - 1), value);
-                app.emit('nmea2000out', message);
-                log.N(`transmitted NMEA message '${message}'`);
+      app.debug(`using configuration: ${JSON.stringify(plugin.options, null, 2)}`)
+        
+      app.setPluginStatus(
+        "operating %d switch and %d relay switch banks",
+        plugin.options.switchbanks.reduce((a: any, sb: any) => (((sb.type) && (sb.type == 'switch'))?(a + 1):a), 0),
+        plugin.options.switchbanks.reduce((a: any, sb: any) => (((!(sb.type)) || (sb.type == 'relay'))?(a + 1):a), 0)
+      )
+
+      // Create and install metadata
+      publishMetadata(createMetadata(), plugin.options.metadataPublisher, (e: any) => {
+        if ((e) && ( e instanceof Error)) {
+          app.setPluginStatus(`publish failed (${e.message})`, false);
+          (new Delta(app, plugin.id)).addMetas(createMetadata()).commit().clear();
+        } else {
+          app.setPluginStatus(`metadata published to '${plugin.options.metadataPublisher.endpoint}'`, false);
+        }
+      });
+
+      // Register a put handler for all switch bank relay channels.
+      plugin.options.switchbanks.filter((sb: any) => (sb.type == 'relay')).forEach((switchbank: any) => {
+        switchbank.channels.forEach((channel: any) => {
+          app.debug(`installing put handler for '${channel.path}'`);
+          app.registerPutHandler('vessels.self', channel.path, putHandler, plugin.id);
+        });
+      });
+
+      // Create and return a metadata digest object.
+      function createMetadata(): any {
+        return(plugin.options.switchbanks.reduce((a: any, switchbank: any) => {
+          a[`${plugin.options.root}${switchbank.instance}`] = {
+            instance: switchbank.instance,
+            type: switchbank.type,
+            description: switchbank.description,
+            channelCount: switchbank.channelCount,
+            $source: `plugin:${plugin.id}`,
+          }
+          switchbank.channels.forEach((channel: any) => {
+            a[`${plugin.options.root}${switchbank.instance}.${channel.index}.state`] = {
+              description: `Binary ${switchbank.type} state (0 = OFF, 1 = ON)`,
+              type: switchbank.type,
+              shortName: `[${switchbank.instance},${channel.index}]`,
+              displayName: channel.description,
+              longName: `${channel.description} [${switchbank.instance},${channel.index}]`,
+              timeout: 10000,
+              $source: `plugin:${plugin.id}` 
+            }
+          });
+          return(a);
+        },{}));
+      }
+
+      // Publish metadata object to publisher.
+      function publishMetadata(metadata: any, publisher: any, callback: any, options={ retries: 3, interval: 10000 }) {
+        if ((publisher) && (publisher.endpoint) && (publisher.method) && (publisher.credentials)) {
+          const httpInterface = new HttpInterface(app.getSelfPath('uuid'));
+          httpInterface.getServerAddress().then((serverAddress: string) => {
+            httpInterface.getServerInfo().then((serverInfo: any) => {
+              const [ username, password ] = publisher.credentials.split(':');   
+              httpInterface.getAuthenticationToken(username, password).then((token: string) => {
+                const intervalId = setInterval(() => {
+                  if (options.retries-- === 0) {
+                    clearInterval(intervalId);
+                    callback(new Error(`tried ${options.retries} times with no success`));
+                  }
+                  fetch(`${serverAddress}${publisher.endpoint}`, { "method": publisher.method, "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
+                    if (response.status == 200) {
+                      clearInterval(intervalId);
+                      callback();
+                    }
+                  }).catch((e) => {
+                    clearInterval(intervalId);
+                    callback(new Error(e));
+                  });
+                }, options.interval);
+              })
+            })
+          })
+        } else {
+          callback(new Error(`'metadataPublisher' configuration is invalid`));
+        }
+      }
+
+      /**
+       * Process a put request for switchbank state change. Signal K does
+       * not pass a handle to the request source and since we want to
+       * process requests emanating from physical switches differently to
+       * requests emanating from virtual devices, we need a work-around.
+       *
+       * So, we extend what constitutes a value (normally 0 or 1) to allow
+       * values 2 and 3 for virtual OFF and ON.
+       * 
+       * @param {*} context 
+       * @param {*} path 
+       * @param {*} value 
+       * @param {*} callback 
+       * @returns 
+       */
+      function putHandler(context: any, path: string, value: any, callback: any) {
+        app.debug(`processing put request (path = ${path}, value = ${value})`);
+        var parts: string[] = path.split('.') || [];
+        if ((!isNaN(parts[3])) && (!isNaN(parseFloat(parts[3])))) {
+          var instance: number = parseInt(parts[3]);
+          if ((instance >= 0) && (instance <= 0xFE)) {
+            if ((!isNaN(parts[4])) && (!isNaN(parseFloat(parts[4])))) {
+              var channel = parseInt(parts[4]);
+              if  ((channel >= 1) && (channel <= 28)) {
+                if ((!isNaN(value)) && (!isNaN(parseFloat(value)))) {
+                  value = parseInt(value);
+                  if ((value == 0) || (value == 1) || (value == 2) || (value == 3)) {
+                    var message = Nmea2000.makeMessagePGN127502(instance, (channel - 1), value);
+                    app.emit('nmea2000out', message);
+                    log.N(`transmitted NMEA message '${message}'`);
+                  } else {
+                    log.E(`put request contains invalid value (${value})`);
+                  }
+                } else {
+                  log.E(`put request value is not a number (${value})`);
+                }
               } else {
-                log.E(`put request contains invalid value (${value})`);
+                log.E(`put request channel is out of range (${channel})`);
               }
             } else {
-              log.E(`put request value is not a number (${value})`);
+              log.E(`put request channel is not a number (${parts[4]})`);
             }
           } else {
-            log.E(`put request channel is out of range (${channel})`);
+            log.E(`put request instance is out of range (${instance})`);
           }
         } else {
-          log.E(`put request channel is not a number (${parts[4]})`);
+          log.E(`put request instance is not a number (${parts[3]})`);
         }
-      } else {
-        log.E(`put request instance is out of range (${instance})`);
+        return({ state: 'COMPLETED', statusCode: 200 });
       }
-    } else {
-      log.E(`put request instance is not a number (${parts[3]})`);
-    }
-    return({ state: 'COMPLETED', statusCode: 200 });
-  }
 
-  return(plugin);
+    },
+
+    stop: function() {
+	    unsubscribes.forEach((f)=> f());
+	    unsubscribes = [];
+    }
+
+  }
+  
+  return(plugin)
+  
+}
+
+interface SKPlugin {
+  id: string,
+  name: string,
+  description: string,
+  schema: any,
+  uiSchema: any,
+
+  start: (app: any) => void,
+  stop: () => void,
+  
+  options: any
 }
