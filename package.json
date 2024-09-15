@@ -27,12 +27,14 @@
   },
   "homepage": "https://github.com/pdjr-signalk/pdjr-skplugin-switchbank#readme",
   "dependencies": {
-    "@types/node": "^22.5.4",
     "lodash": "^4.17.21",
-    "signalk-libdelta": "github:pdjr-signalk/signalk-libdelta",
-    "signalk-libhttpinterface": "github:pdjr-signalk/signalk-libhttpinterface",
-    "signalk-liblog": "github:pdjr-signalk/signalk-liblog",
-    "signalk-libnmea2000": "github:pdjr-signalk/signalk-libnmea2000"
+    "signalk-libdelta": "github:pdjr-signalk/signalk-libdelta#typescript",
+    "signalk-libhttpinterface": "github:pdjr-signalk/signalk-libhttpinterface#typescript",
+    "signalk-libnmea2000": "github:pdjr-signalk/signalk-libnmea2000#typescript"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.7",
+    "@types/node": "^22.5.4"
   },
   "directories": {}
 }

@@ -14,10 +14,10 @@
  * permissions and limitations under the License.
  */
 
-const _ = require('lodash');
-const Delta = require('signalk-libdelta/Delta.js');
-const Nmea2000 = require('signalk-libnmea2000/Nmea2000.js');
-const HttpInterface = require('signalk-libhttpinterface/HttpInterface.js');
+import * as _ from 'lodash'
+import Delta from 'signalk-libdelta/Delta.js'
+import Nmea2000 from 'signalk-libnmea2000/Nmea2000.js'
+import HttpInterface from 'signalk-libhttpinterface/HttpInterface.js'
 
 
 const PLUGIN_ID: string = 'switchbank'
