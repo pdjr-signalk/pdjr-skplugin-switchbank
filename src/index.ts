@@ -99,7 +99,6 @@ const PLUGIN_SCHEMA: any = {
             }
           }
         },
-        "required": [ "instance" ],
         "default": {
           "type": "relay",
           "channelCount": 8,
@@ -258,10 +257,10 @@ module.exports = function(app: any) {
       function putHandler(context: any, path: string, value: any, callback: any) {
         app.debug(`processing put request (path = ${path}, value = ${value})`);
         var parts: string[] = path.split('.') || [];
-        if ((!isNaN(parts[3])) && (!isNaN(parseFloat(parts[3])))) {
+        if (!isNaN(parseFloat(parts[3]))) {
           var instance: number = parseInt(parts[3]);
           if ((instance >= 0) && (instance <= 0xFE)) {
-            if ((!isNaN(parts[4])) && (!isNaN(parseFloat(parts[4])))) {
+            if (!isNaN(parseFloat(parts[4]))) {
               var channel = parseInt(parts[4]);
               if  ((channel >= 1) && (channel <= 28)) {
                 if ((!isNaN(value)) && (!isNaN(parseFloat(value)))) {
@@ -269,28 +268,27 @@ module.exports = function(app: any) {
                   if ((value == 0) || (value == 1) || (value == 2) || (value == 3)) {
                     var message = Nmea2000.makeMessagePGN127502(instance, (channel - 1), value);
                     app.emit('nmea2000out', message);
-                    log.N(`transmitted NMEA message '${message}'`);
+                    app.setPluginStatus(`transmitted NMEA message '${message}'`);
                   } else {
-                    log.E(`put request contains invalid value (${value})`);
+                    app.setPluginError(`put request contains invalid value (${value})`);
                   }
                 } else {
-                  log.E(`put request value is not a number (${value})`);
+                  app.setPluginError(`put request value is not a number (${value})`);
                 }
               } else {
-                log.E(`put request channel is out of range (${channel})`);
+                app.setPluginError(`put request channel is out of range (${channel})`);
               }
             } else {
-              log.E(`put request channel is not a number (${parts[4]})`);
+              app.setPluginError(`put request channel is not a number (${parts[4]})`);
             }
           } else {
-            log.E(`put request instance is out of range (${instance})`);
+            app.setPluginError(`put request instance is out of range (${instance})`);
           }
         } else {
-          log.E(`put request instance is not a number (${parts[3]})`);
+          app.setPluginError(`put request instance is not a number (${parts[3]})`);
         }
         return({ state: 'COMPLETED', statusCode: 200 });
       }
-
     },
 
     stop: function() {
@@ -311,7 +309,7 @@ interface SKPlugin {
   schema: any,
   uiSchema: any,
 
-  start: (app: any) => void,
+  start: (options: any) => void,
   stop: () => void,
   
   options: any
