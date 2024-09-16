@@ -29,7 +29,7 @@
   "homepage": "https://github.com/pdjr-signalk/pdjr-skplugin-switchbank#readme",
   "dependencies": {
     "lodash": "^4.17.21",
-    "signalk-libdelta": "github:pdjr-signalk/signalk-libdelta",
+    "signalk-libdelta": "github:pdjr-signalk/signalk-libdelta#typescript",
     "signalk-libhttpinterface": "github:pdjr-signalk/signalk-libhttpinterface",
     "signalk-libnmea2000": "github:pdjr-signalk/signalk-libnmea2000"
   },
