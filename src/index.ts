@@ -15,9 +15,9 @@
  */
 
 import * as _ from 'lodash'
-import Delta from 'signalk-libdelta/Delta.js'
+import { Delta } from 'signalk-libdelta'
 import Nmea2000 from 'signalk-libnmea2000/Nmea2000.js'
-import HttpInterface from 'signalk-libhttpinterface/HttpInterface.js'
+import { HttpInterface } from 'signalk-libhttpinterface'
 
 
 const PLUGIN_ID: string = 'switchbank'
