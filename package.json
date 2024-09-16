@@ -34,8 +34,7 @@
   },
   "devDependencies": {
     "@types/lodash": "^4.17.7",
-    "@types/node": "^22.5.4",
-    "@types/signalk-libdelta": "github:pdjr-signalk/signalk-libdelta#typescript"
+    "@types/node": "^22.5.4"
   },
   "directories": {}
 }
