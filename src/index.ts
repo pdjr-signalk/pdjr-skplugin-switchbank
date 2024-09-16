@@ -159,11 +159,7 @@ module.exports = function(app: any) {
 
       app.debug(`using configuration: ${JSON.stringify(plugin.options, null, 2)}`)
         
-      app.setPluginStatus(
-        "operating %d switch and %d relay switch banks",
-        plugin.options.switchbanks.reduce((a: any, sb: any) => (((sb.type) && (sb.type == 'switch'))?(a + 1):a), 0),
-        plugin.options.switchbanks.reduce((a: any, sb: any) => (((!(sb.type)) || (sb.type == 'relay'))?(a + 1):a), 0)
-      )
+      app.setPluginStatus(`operating ${plugin.options.switchbanks.reduce((a: any, sb: any) => (((sb.type) && (sb.type == 'switch'))?(a + 1):a), 0)} switch and ${plugin.options.switchbanks.reduce((a: any, sb: any) => (((!(sb.type)) || (sb.type == 'relay'))?(a + 1):a), 0)} relay switch banks`)
 
       // Create and install metadata
       publishMetadata(createMetadata(), plugin.options.metadataPublisher, (e: any) => {
