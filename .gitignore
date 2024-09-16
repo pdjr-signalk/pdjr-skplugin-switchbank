@@ -39,3 +39,4 @@ jspm_packages
 # Build stuff
 dist
 package-lock.json
+*.tgz
