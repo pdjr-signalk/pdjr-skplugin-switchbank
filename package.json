@@ -2,12 +2,13 @@
   "name": "pdjr-skplugin-switchbank",
   "version": "2.1.0",
   "description": "NMEA2000 switchbank support.",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "signalk-plugin-enabled-by-default": true,
   "scripts": {
     "publish": "yq -o=json -I=2 resources/openApi.yaml > resources/openApi.json",
     "test": "echo \"Error: no test specified\"",
-    "build": "tsc ; cp dist/index.d.ts .",
+    "build": "tsc",
     "prepare": "tsc",
     "pack": "npm pack"
   },
