@@ -163,11 +163,11 @@ module.exports = function(app: any) {
 
       // Create and install metadata
       publishMetadata(createMetadata(), plugin.options.metadataPublisher, (e: any) => {
-        if ((e) && ( e instanceof Error)) {
-          app.setPluginStatus(`publish failed (${e.message})`, false);
+        if ((e) && (e instanceof Error)) {
+          app.setPluginError(`publish failed (${e.message})`);
           (new Delta(app, plugin.id)).addMetas(createMetadata()).commit().clear();
         } else {
-          app.setPluginStatus(`metadata published to '${plugin.options.metadataPublisher.endpoint}'`, false);
+          app.debug(`metadata published to '${plugin.options.metadataPublisher.endpoint}'`);
         }
       });
 
