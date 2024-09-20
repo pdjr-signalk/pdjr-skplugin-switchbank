@@ -31,8 +31,8 @@
   "dependencies": {
     "lodash": "^4.17.21",
     "signalk-libdelta": "github:pdjr-signalk/signalk-libdelta",
-    "signalk-libhttpinterface": "github:pdjr-signalk/signalk-libhttpinterface#typescript",
-    "signalk-libnmea2000": "github:pdjr-signalk/signalk-libnmea2000#typescript"
+    "signalk-libhttpinterface": "github:pdjr-signalk/signalk-libhttpinterface",
+    "signalk-libnmea2000": "github:pdjr-signalk/signalk-libnmea2000"
   },
   "devDependencies": {
     "@types/lodash": "^4.17.7",
