@@ -30,26 +30,6 @@ const PLUGIN_SCHEMA: any = {
       "title": "Root path for all switchbank keys",
       "type": "string"
     },
-    "metadataPublisher": {
-      "title": "Metadata publication service configuration",
-      "type": "object",
-      "properties": {
-        "endpoint": {
-          "title": "Metadata publication endpoint",
-          "type": "string"
-        },
-        "method": {
-          "title": "Metadata publication method",
-          "type": "string",
-          "enum": [ "PATCH", "POST", "PUT" ]
-        },
-        "credentials": {
-          "title": "Metadata publisher credentials",
-          "type": "string"
-        }
-      },
-      "default": { "method": "POST" }
-    },
     "switchbanks" : {
       "title": "Switch bank definitions",
       "type": "array",
@@ -112,7 +92,6 @@ const PLUGIN_SCHEMA: any = {
   "required": [ "switchbanks" ],
   "default": {
     "root": "electrical.switches.bank.",
-    "metadataPublisher": { "method": "POST" },
     "switchbanks": []
   }
 }
@@ -162,15 +141,8 @@ module.exports = function(app: any) {
       app.setPluginStatus(`operating ${plugin.options.switchbanks.reduce((a: any, sb: any) => (((sb.type) && (sb.type == 'switch'))?(a + 1):a), 0)} switch and ${plugin.options.switchbanks.reduce((a: any, sb: any) => (((!(sb.type)) || (sb.type == 'relay'))?(a + 1):a), 0)} relay switch banks`)
 
       // Create and install metadata
-      publishMetadata(createMetadata(), plugin.options.metadataPublisher, (e: any) => {
-        if ((e) && (e instanceof Error)) {
-          app.setPluginError(`publish failed (${e.message})`);
-          (new Delta(app, plugin.id)).addMetas(createMetadata()).commit().clear();
-        } else {
-          app.debug(`metadata published to '${plugin.options.metadataPublisher.endpoint}'`);
-        }
-      });
-
+      publishMetadata(createMetadata());
+  
       // Register a put handler for all switch bank relay channels.
       plugin.options.switchbanks.filter((sb: any) => (sb.type == 'relay')).forEach((switchbank: any) => {
         switchbank.channels.forEach((channel: any) => {
@@ -205,34 +177,10 @@ module.exports = function(app: any) {
       }
 
       // Publish metadata object to publisher.
-      function publishMetadata(metadata: any, publisher: any, callback: any, options={ retries: 3, interval: 10000 }) {
-        if ((publisher) && (publisher.endpoint) && (publisher.method) && (publisher.credentials)) {
-          const httpInterface = new HttpInterface(app.getSelfPath('uuid'));
-          httpInterface.getServerAddress().then((serverAddress: string) => {
-            httpInterface.getServerInfo().then((serverInfo: any) => {
-              const [ username, password ] = publisher.credentials.split(':');   
-              httpInterface.getAuthenticationToken(username, password).then((token: string) => {
-                const intervalId = setInterval(() => {
-                  if (options.retries-- === 0) {
-                    clearInterval(intervalId);
-                    callback(new Error(`tried ${options.retries} times with no success`));
-                  }
-                  fetch(`${serverAddress}${publisher.endpoint}`, { "method": publisher.method, "headers": { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }, "body": JSON.stringify(metadata) }).then((response) => {
-                    if (response.status == 200) {
-                      clearInterval(intervalId);
-                      callback();
-                    }
-                  }).catch((e) => {
-                    clearInterval(intervalId);
-                    callback(new Error(e));
-                  });
-                }, options.interval);
-              })
-            })
-          })
-        } else {
-          callback(new Error(`'metadataPublisher' configuration is invalid`));
-        }
+      function publishMetadata(metadata: any) {
+        var delta = new Delta(app, plugin.id);
+        Object.keys(metadata).forEach((path) => delta.addMeta(path, metadata[path]));
+        delta.commit().clear();
       }
 
       /**
