@@ -34,7 +34,7 @@
   "devDependencies": {
     "@types/lodash": "^4.17.7",
     "@types/node": "^22.5.4",
-    "@types/typescript": "^0.4.29"
+    "typescript": "^5.7.2"
   },
   "directories": {}
 }
