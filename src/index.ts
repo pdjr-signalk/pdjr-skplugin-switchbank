@@ -17,8 +17,6 @@
 import * as _ from 'lodash'
 import { Delta } from 'signalk-libdelta'
 import { Nmea2000 } from 'signalk-libnmea2000'
-import { HttpInterface } from 'signalk-libhttpinterface'
-
 
 const PLUGIN_ID: string = 'switchbank'
 const PLUGIN_NAME: string = 'pdjr-skplugin-switchbank'
