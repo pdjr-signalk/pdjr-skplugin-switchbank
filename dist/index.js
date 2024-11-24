@@ -96,17 +96,17 @@ const PLUGIN_SCHEMA = {
 const PLUGIN_UISCHEMA = {};
 module.exports = function (app) {
     let unsubscribes = [];
+    let options = {};
     const plugin = {
         id: PLUGIN_ID,
         name: PLUGIN_NAME,
         description: PLUGIN_DESCRIPTION,
         schema: PLUGIN_SCHEMA,
         uiSchema: PLUGIN_UISCHEMA,
-        options: {},
-        start: function (options) {
-            plugin.options = _.cloneDeep(plugin.schema.default);
-            _.merge(plugin.options, options);
-            plugin.options.switchbanks = plugin.options.switchbanks.reduce((a, switchbank) => {
+        start: function (props) {
+            options = _.cloneDeep(plugin.schema.default);
+            _.merge(options, props);
+            options.switchbanks = options.switchbanks.reduce((a, switchbank) => {
                 try {
                     var validSwitchbank = _.cloneDeep(plugin.schema.properties.switchbanks.items.default);
                     _.merge(validSwitchbank, switchbank);
@@ -133,113 +133,113 @@ module.exports = function (app) {
                 }
                 return (a);
             }, []);
-            plugin.options.switchbanks.forEach((switchbank) => {
+            options.switchbanks.forEach((switchbank) => {
                 switchbank.channels.forEach((channel) => {
-                    channel.path = `${plugin.options.root}${switchbank.instance}.${channel.index}.state`;
+                    channel.path = `${options.root}${switchbank.instance}.${channel.index}.state`;
                 });
             });
-            app.debug(`using configuration: ${JSON.stringify(plugin.options, null, 2)}`);
-            app.setPluginStatus(`operating ${plugin.options.switchbanks.reduce((a, sb) => (((sb.type) && (sb.type == 'switch')) ? (a + 1) : a), 0)} switch and ${plugin.options.switchbanks.reduce((a, sb) => (((!(sb.type)) || (sb.type == 'relay')) ? (a + 1) : a), 0)} relay switch banks`);
+            app.debug(`using configuration: ${JSON.stringify(options, null, 2)}`);
+            app.setPluginStatus(`operating ${options.switchbanks.reduce((a, sb) => (((sb.type) && (sb.type == 'switch')) ? (a + 1) : a), 0)} switch and ${options.switchbanks.reduce((a, sb) => (((!(sb.type)) || (sb.type == 'relay')) ? (a + 1) : a), 0)} relay switch banks`);
             // Create and install metadata
             publishMetadata(createMetadata());
             // Register a put handler for all switch bank relay channels.
-            plugin.options.switchbanks.filter((sb) => (sb.type == 'relay')).forEach((switchbank) => {
+            options.switchbanks.filter((sb) => (sb.type == 'relay')).forEach((switchbank) => {
                 switchbank.channels.forEach((channel) => {
                     app.debug(`installing put handler for '${channel.path}'`);
                     app.registerPutHandler('vessels.self', channel.path, putHandler, plugin.id);
                 });
             });
-            // Create and return a metadata digest object.
-            function createMetadata() {
-                return (plugin.options.switchbanks.reduce((a, switchbank) => {
-                    a[`${plugin.options.root}${switchbank.instance}`] = {
-                        instance: switchbank.instance,
-                        type: switchbank.type,
-                        description: switchbank.description,
-                        channelCount: switchbank.channelCount,
-                        $source: `plugin:${plugin.id}`,
-                    };
-                    switchbank.channels.forEach((channel) => {
-                        a[`${plugin.options.root}${switchbank.instance}.${channel.index}.state`] = {
-                            description: `Binary ${switchbank.type} state (0 = OFF, 1 = ON)`,
-                            type: switchbank.type,
-                            shortName: `[${switchbank.instance},${channel.index}]`,
-                            displayName: channel.description,
-                            longName: `${channel.description} [${switchbank.instance},${channel.index}]`,
-                            timeout: 10000,
-                            $source: `plugin:${plugin.id}`
-                        };
-                    });
-                    return (a);
-                }, {}));
-            }
-            // Publish metadata object to publisher.
-            function publishMetadata(metadata) {
-                var delta = new signalk_libdelta_1.Delta(app, plugin.id);
-                Object.keys(metadata).forEach((path) => delta.addMeta(path, metadata[path]));
-                delta.commit().clear();
-            }
-            /**
-             * Process a put request for switchbank state change. Signal K does
-             * not pass a handle to the request source and since we want to
-             * process requests emanating from physical switches differently to
-             * requests emanating from virtual devices, we need a work-around.
-             *
-             * So, we extend what constitutes a value (normally 0 or 1) to allow
-             * values 2 and 3 for virtual OFF and ON.
-             *
-             * @param {*} context
-             * @param {*} path
-             * @param {*} value
-             * @param {*} callback
-             * @returns
-             */
-            function putHandler(context, path, value, callback) {
-                app.debug(`processing put request (path = ${path}, value = ${value})`);
-                var parts = path.split('.') || [];
-                if (!isNaN(parseFloat(parts[3]))) {
-                    var instance = parseInt(parts[3]);
-                    if ((instance >= 0) && (instance <= 0xFE)) {
-                        if (!isNaN(parseFloat(parts[4]))) {
-                            var channel = parseInt(parts[4]);
-                            if ((channel >= 1) && (channel <= 28)) {
-                                if ((!isNaN(value)) && (!isNaN(parseFloat(value)))) {
-                                    value = parseInt(value);
-                                    if ((value == 0) || (value == 1) || (value == 2) || (value == 3)) {
-                                        var message = signalk_libnmea2000_1.Nmea2000.makeMessagePGN127502(instance, (channel - 1), value);
-                                        app.emit('nmea2000out', message);
-                                        app.setPluginStatus(`transmitted NMEA message '${message}'`);
-                                    }
-                                    else {
-                                        app.setPluginError(`put request contains invalid value (${value})`);
-                                    }
-                                }
-                                else {
-                                    app.setPluginError(`put request value is not a number (${value})`);
-                                }
-                            }
-                            else {
-                                app.setPluginError(`put request channel is out of range (${channel})`);
-                            }
-                        }
-                        else {
-                            app.setPluginError(`put request channel is not a number (${parts[4]})`);
-                        }
-                    }
-                    else {
-                        app.setPluginError(`put request instance is out of range (${instance})`);
-                    }
-                }
-                else {
-                    app.setPluginError(`put request instance is not a number (${parts[3]})`);
-                }
-                return ({ state: 'COMPLETED', statusCode: 200 });
-            }
         },
         stop: function () {
             unsubscribes.forEach((f) => f());
             unsubscribes = [];
         }
     };
+    // Create and return a metadata digest object.
+    function createMetadata() {
+        return (options.switchbanks.reduce((a, switchbank) => {
+            a[`${options.root}${switchbank.instance}`] = {
+                instance: switchbank.instance,
+                type: switchbank.type,
+                description: switchbank.description,
+                channelCount: switchbank.channelCount,
+                $source: `plugin:${plugin.id}`,
+            };
+            switchbank.channels.forEach((channel) => {
+                a[`${options.root}${switchbank.instance}.${channel.index}.state`] = {
+                    description: `Binary ${switchbank.type} state (0 = OFF, 1 = ON)`,
+                    type: switchbank.type,
+                    shortName: `[${switchbank.instance},${channel.index}]`,
+                    displayName: channel.description,
+                    longName: `${channel.description} [${switchbank.instance},${channel.index}]`,
+                    timeout: 10000,
+                    $source: `plugin:${plugin.id}`
+                };
+            });
+            return (a);
+        }, {}));
+    }
+    // Publish metadata object.
+    function publishMetadata(metadata) {
+        var delta = new signalk_libdelta_1.Delta(app, plugin.id);
+        Object.keys(metadata).forEach((path) => delta.addMeta(path, metadata[path]));
+        delta.commit().clear();
+    }
+    /**
+     * Process a put request for switchbank state change. Signal K does
+     * not pass a handle to the request source and since we want to
+     * process requests emanating from physical switches differently to
+     * requests emanating from virtual devices, we need a work-around.
+     *
+     * So, we extend what constitutes a value (normally 0 or 1) to allow
+     * values 2 and 3 for virtual OFF and ON.
+     *
+     * @param {*} context
+     * @param {*} path
+     * @param {*} value
+     * @param {*} callback
+     * @returns
+     */
+    function putHandler(context, path, value, callback) {
+        app.debug(`processing put request (path = ${path}, value = ${value})`);
+        var parts = path.split('.') || [];
+        if (!isNaN(parseFloat(parts[3]))) {
+            var instance = parseInt(parts[3]);
+            if ((instance >= 0) && (instance <= 0xFE)) {
+                if (!isNaN(parseFloat(parts[4]))) {
+                    var channel = parseInt(parts[4]);
+                    if ((channel >= 1) && (channel <= 28)) {
+                        if ((!isNaN(value)) && (!isNaN(parseFloat(value)))) {
+                            value = parseInt(value);
+                            if ((value == 0) || (value == 1) || (value == 2) || (value == 3)) {
+                                var message = signalk_libnmea2000_1.Nmea2000.makeMessagePGN127502(instance, (channel - 1), value);
+                                app.emit('nmea2000out', message);
+                                app.setPluginStatus(`transmitted NMEA message '${message}'`);
+                            }
+                            else {
+                                app.setPluginError(`put request contains invalid value (${value})`);
+                            }
+                        }
+                        else {
+                            app.setPluginError(`put request value is not a number (${value})`);
+                        }
+                    }
+                    else {
+                        app.setPluginError(`put request channel is out of range (${channel})`);
+                    }
+                }
+                else {
+                    app.setPluginError(`put request channel is not a number (${parts[4]})`);
+                }
+            }
+            else {
+                app.setPluginError(`put request instance is out of range (${instance})`);
+            }
+        }
+        else {
+            app.setPluginError(`put request instance is not a number (${parts[3]})`);
+        }
+        return ({ state: 'COMPLETED', statusCode: 200 });
+    }
     return (plugin);
 };
