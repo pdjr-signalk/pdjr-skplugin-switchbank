@@ -99,17 +99,23 @@ function or application.
         <dl>
           <dt>Channel index <code>index</code></dt>
           <dd>
+            <p>
             Required number property that identifies this channel on
             the switchbank.
+            </p><p>
             Note that this value must conform to Signal K enumeration
             (base 1) rather than the NMEA enumeration (base 0).
+            </p>
           </dd>
           <dt>Channel description <code>description</code></dt>
           <dd>
+            <p>
             Optional string describing the switch channel.
+            </p><p>
             The supplied value is used by the plugin to construct the
             metadata 'displayName' roperty which may be used in some
             user-interface and messaging contexts.
+            </p>
           </dd>
         </dl>
       </dd>
