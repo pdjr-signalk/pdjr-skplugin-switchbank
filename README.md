@@ -23,12 +23,14 @@ function or application.
 ## Configuration
 
 <dl>
-  <dt>Root path for all switchbank keys <code>root</code></dt>
+  <dt>Root path for switchbank keys <code>root</code></dt>
   <dd>
+    <p>
     Optional string specifying the Signal K root under which the plugin
     will create switchbank nodes.
-
+    </p><p>
     Defaults to 'electrical.switches.bank.'.
+    </p>
   </dd>
   <dt>Switchbank definitions <code>switchbanks</code></dt>
   <dd>
@@ -48,39 +50,47 @@ function or application.
     Each <em>switchbank</em> object has the following properties.
     </p>
     <dl>
-      <dt>Switchbank instance number <code>instance</code></dt>
+      <dt>Instance number <code>instance</code></dt>
       <dd>
+        <p>
         Required integer giving the NMEA instance number of the
         switchbank device.
-
+        </p><p>
         This value must be the same as that set on the associated
-        remote hardware device device.
+        hardware device.
+        </p>
       </dd>
       <dt>Switchbank type <code>type</code></dt>
       <dd>
+        <p>
         Optional string value, either 'switch' or 'relay', specifying
         whether the switchbank is a switch input or relay output
         device.
-
+        </p><p>
         Defaults to 'relay'.
+        </p>
       </dd>
       <dt>PGN used to update this switchbank <code>pgn</code></dt>
       <dd>
+        <p>
         Optional number value which specifies the PGN used to update
         the associated relay switchbank (not required for switch
         switchbanks).
-        The plugin supports '127502' and '??????'.
-        
-        Defaults to '127502'.
+        The plugin supports 127502 and ??????.
+        </p><p>
+        Defaults to 127502.
+        </p>
       </dd>
       <dt>Text describing the switchbank <code>description</code></dt>
       <dd>
+        <p>
         Optional string describing the switchbank device.
-
+        </p><p>
         This value can usefully include data on the device's
         installation location, model/serial number and so on.
-
+        </p><p>
         Defaults to 'Switchbank *instance*'.
+        </p>
       </dd>
       <dt>Switchbank channels <code>channels</code></dt>
       <dd>
