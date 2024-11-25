@@ -64,15 +64,6 @@ function or application.
 
         Defaults to 'relay'.
       </dd>
-      <dt>Number of channels supported by this switchbank <code>channelCount</code></dt>
-      <dd>
-        Optional number value specifying the number of switch or relay
-        channels supported by this switchbank.
-
-        Defaults to 27 which is the maximum number of channels that
-        the NMEA switchbank protocol supports.
-        Most likely you will want to change this.
-      </dd>
       <dt>PGN used to update this switchbank <code>pgn</code></dt>
       <dd>
         Optional number value which specifies the PGN used to update
