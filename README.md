@@ -17,7 +17,7 @@ As well as operating remote relays, the plugin injects metadata into
 Signal K's 'electrical.switches.' hierarchy with user supplied metadata
 allowing Signal K switchbanks to be described in a meaningful way
 (perhaps including the device location, product code, serial-number,
-etc.) and switch/relay channels to be described in terms of their
+etc.) and their switch/relay channels to be described in terms of
 function or application.
 
 ## Configuration
@@ -26,38 +26,9 @@ function or application.
   <dt>Root path for all switchbank keys <code>root</code></dt>
   <dd>
     Optional string specifying the Signal K root under which the plugin
-    will conduct all switchbank activities.
+    will create switchbank nodes.
+
     Defaults to 'electrical.switches.bank.'.
-  </dd>
-  <dt>Metadata publication service configuration <code>metadataPublisher</code></dt>
-  <dd>
-    Optional object configuring access to a remote metadata publication
-    service (a suitable service is implemented by the author's
-    <a href='https://github.com/pdjr-signalk/pdjr-skplugin-metadata#readme'>metadata plugin</a>.
-    <p>
-    If this property is omitted, or if, for whatever reason, metadata cannot
-    be published to the specified service then the plugin will inject metadata
-    directly into the Signal K tree.</p>
-    <dl>
-      <dt>Metadata publication endpoint <code>endpoint</code></dt>
-      <dd>
-        Required URL of an API which will accept Signal K metadata and
-        at least insert it into the Signal K tree.
-        For example '/plugins/metadata/metadata'.
-      </dd>
-      <dt>Metadata publication method <code>method</code></dt>
-      <dd>
-        Optional string specifying the HTTP method which should be used
-        to submit metadata to the publication service.
-        Defaults to 'POST', but 'PUT' or 'PATCH' may be specified.
-      </dd>
-      <dt>Metadata publisher credentials <code>credentials</code></dt>
-      <dd>
-        Required string of the form 'username:password' specifying
-        Signal K credentials that will allow access to the publication
-        service. 
-      </dd>
-    </dl>
   </dd>
   <dt>Switchbank definitions <code>switchbanks</code></dt>
   <dd>
@@ -81,34 +52,44 @@ function or application.
       <dd>
         Required integer giving the NMEA instance number of the
         switchbank device.
-        Typically, this value is set on the hardware device and read
-        automatically by Signal K.
+
+        This value must be the same as that set on the associated
+        remote hardware device device.
       </dd>
       <dt>Switchbank type <code>type</code></dt>
       <dd>
         Optional string value, either 'switch' or 'relay', specifying
         whether the switchbank is a switch input or relay output
         device.
+
         Defaults to 'relay'.
       </dd>
       <dt>Number of channels supported by this switchbank <code>channelCount</code></dt>
       <dd>
         Optional number value specifying the number of switch or relay
         channels supported by this switchbank.
+
+        Defaults to 27 which is the maximum number of channels that
+        the NMEA switchbank protocol supports.
+        Most likely you will want to change this.
       </dd>
       <dt>PGN used to update this switchbank <code>pgn</code></dt>
       <dd>
-        Optional string value for 'relay' switchbanks (ignored by
-        'switch' switchbanks) which specifies the PGN used to update
-        the switchbank state.
-        The plugin supports '127502' and '??????' and defaults to
-        '127502'.
+        Optional number value which specifies the PGN used to update
+        the associated relay switchbank (not required for switch
+        switchbanks).
+        The plugin supports '127502' and '??????'.
+        
+        Defaults to '127502'.
       </dd>
       <dt>Text describing the switchbank <code>description</code></dt>
       <dd>
         Optional string describing the switchbank device.
+
         This value can usefully include data on the device's
         installation location, model/serial number and so on.
+
+        Defaults to 'Switchbank *instance*'.
       </dd>
       <dt>Switchbank channels <code>channels</code></dt>
       <dd>
@@ -120,8 +101,7 @@ function or application.
             Required number property that identifies this channel on
             the switchbank.
             Note that this value must conform to Signal K enumeration
-            (base 1) rather than an NMEA enumeration which is often
-            base 0.
+            (base 1) rather than the NMEA enumeration (base 0).
           </dd>
           <dt>Channel description <code>description</code></dt>
           <dd>

@@ -15,7 +15,6 @@
  * permissions and limitations under the License.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-const _ = require("lodash");
 const signalk_libdelta_1 = require("signalk-libdelta");
 const signalk_libnmea2000_1 = require("signalk-libnmea2000");
 const PLUGIN_ID = 'switchbank';
@@ -41,11 +40,7 @@ const PLUGIN_SCHEMA = {
                     },
                     "type": {
                         "description": "Switchbank type",
-                        "type": "string", "default": "relay", "enum": ["switch", "relay"], "title": "Switch bank type"
-                    },
-                    "channelCount": {
-                        "description": "Number of channels supported by this switchbank",
-                        "type": "number"
+                        "type": "string", "default": "relay", "enum": ["relay", "switch"], "title": "Switch bank type"
                     },
                     "pgn": {
                         "description": "PGN used to update this switchbank",
@@ -54,6 +49,10 @@ const PLUGIN_SCHEMA = {
                     "description": {
                         "description": "Text describing the module (serial no, intall location, etc)",
                         "type": "string", "default": "", "title": "Switch bank description"
+                    },
+                    "numberOfChannels": {
+                        "description": "Number of channels supported by this switchbank",
+                        "type": "number"
                     },
                     "channels": {
                         "title": "Switchbank channels",
@@ -94,79 +93,93 @@ const PLUGIN_SCHEMA = {
     }
 };
 const PLUGIN_UISCHEMA = {};
+const DEFAULT_ROOT = "electrical.switches.bank.";
+const DEFAULT_SWITCHBANK_TYPE = 'relay';
+const DEFAULT_SWITCHBANK_PGN = 127501;
 module.exports = function (app) {
     let unsubscribes = [];
-    let options = {};
+    let pluginConfiguration = undefined;
     const plugin = {
         id: PLUGIN_ID,
         name: PLUGIN_NAME,
         description: PLUGIN_DESCRIPTION,
         schema: PLUGIN_SCHEMA,
         uiSchema: PLUGIN_UISCHEMA,
-        start: function (props) {
-            options = _.cloneDeep(plugin.schema.default);
-            _.merge(options, props);
-            options.switchbanks = options.switchbanks.reduce((a, switchbank) => {
-                try {
-                    var validSwitchbank = _.cloneDeep(plugin.schema.properties.switchbanks.items.default);
-                    _.merge(validSwitchbank, switchbank);
-                    if (!validSwitchbank.instance)
-                        throw new Error("missing switchbank 'instance' property");
-                    validSwitchbank.channels = validSwitchbank.channels.reduce((a, channel) => {
-                        try {
-                            var validChannel = Object.assign(Object.assign({}, plugin.schema.properties.switchbanks.items.properties.channels.items.default), channel);
-                            if (validChannel.index === undefined)
-                                throw new Error("missing channel 'index' property");
-                            a.push(validChannel);
-                        }
-                        catch (e) {
-                            if (e instanceof Error)
-                                app.setPluginError(`dropping channel  (${e.message})`);
-                        }
-                        return (a);
-                    }, []);
-                    a.push(validSwitchbank);
-                }
-                catch (e) {
-                    if (e instanceof Error)
-                        app.setPluginError(`dropping switchbank (${e.message})`);
-                }
-                return (a);
-            }, []);
-            options.switchbanks.forEach((switchbank) => {
-                switchbank.channels.forEach((channel) => {
-                    channel.path = `${options.root}${switchbank.instance}.${channel.index}.state`;
+        start: function (options) {
+            try {
+                // Try to elaborate a valid configuration from plugin options
+                pluginConfiguration = createPluginConfiguration(options);
+                app.debug(`using configuration: ${JSON.stringify(pluginConfiguration, null, 2)}`);
+                app.setPluginStatus(`operating ${pluginConfiguration.switchbanks.reduce((a, sb) => (((sb.type) && (sb.type == 'switch')) ? (a + 1) : a), 0)} switch and ${options.switchbanks.reduce((a, sb) => (((!(sb.type)) || (sb.type == 'relay')) ? (a + 1) : a), 0)} relay switch banks`);
+                // Create and install metadata
+                publishMetadata(createMetadata(pluginConfiguration));
+                // Register a put handler for all switch bank relay channels.
+                pluginConfiguration.switchbanks.filter((switchbank) => (switchbank.type == 'relay')).forEach((switchbank) => {
+                    switchbank.channels.forEach((channel) => {
+                        app.debug(`installing put handler for '${channel.path}'`);
+                        app.registerPutHandler('vessels.self', channel.path, putHandler, plugin.id);
+                    });
                 });
-            });
-            app.debug(`using configuration: ${JSON.stringify(options, null, 2)}`);
-            app.setPluginStatus(`operating ${options.switchbanks.reduce((a, sb) => (((sb.type) && (sb.type == 'switch')) ? (a + 1) : a), 0)} switch and ${options.switchbanks.reduce((a, sb) => (((!(sb.type)) || (sb.type == 'relay')) ? (a + 1) : a), 0)} relay switch banks`);
-            // Create and install metadata
-            publishMetadata(createMetadata());
-            // Register a put handler for all switch bank relay channels.
-            options.switchbanks.filter((sb) => (sb.type == 'relay')).forEach((switchbank) => {
-                switchbank.channels.forEach((channel) => {
-                    app.debug(`installing put handler for '${channel.path}'`);
-                    app.registerPutHandler('vessels.self', channel.path, putHandler, plugin.id);
-                });
-            });
+            }
+            catch (e) {
+                app.setPluginStatus('Stopped: bad or missing configuration');
+                app.setPluginError(e.message);
+            }
         },
         stop: function () {
             unsubscribes.forEach((f) => f());
             unsubscribes = [];
         }
     };
+    function createPluginConfiguration(options) {
+        let pluginConfiguration = {
+            root: (options.root || DEFAULT_ROOT),
+            switchbanks: []
+        };
+        if (!options.switchbanks)
+            throw new Error('missing \'switchbanks\' property');
+        if (!options.switchbanks.length)
+            throw new Error('\'switchbanks\' property is empty');
+        options.switchbanks.forEach((switchbankOption) => {
+            if (!switchbankOption.instance)
+                throw new Error('switchbank item has missing \'instance\' property');
+            let switchbank = {
+                instance: switchbankOption.instance,
+                type: (switchbankOption.type) ? switchbankOption.type : DEFAULT_SWITCHBANK_TYPE,
+                pgn: (switchbankOption.pgn) ? switchbankOption.pgn : DEFAULT_SWITCHBANK_PGN,
+                description: (switchbankOption.description) ? switchbankOption.description : `Switchbank ${switchbankOption.instance}`,
+                channels: []
+            };
+            if (!switchbankOption.channels)
+                throw new Error('switchbank item has missing \'channels\' property');
+            if (!switchbankOption.channels.length)
+                throw new Error('\'channels\' property\' is empty');
+            switchbankOption.channels.forEach((channelOption) => {
+                if (!channelOption.index)
+                    throw new Error('channel item has missing \'index\' property');
+                let channel = {
+                    index: channelOption.index,
+                    description: (channelOption.description) ? channelOption.description : `Channel ${channelOption.index}`,
+                    path: `${pluginConfiguration.root}${switchbank.instance}.${channelOption.index}.state`
+                };
+                switchbank.channels.push(channel);
+            });
+            pluginConfiguration.switchbanks.push(switchbank);
+        });
+        return (pluginConfiguration);
+    }
     // Create and return a metadata digest object.
-    function createMetadata() {
-        return (options.switchbanks.reduce((a, switchbank) => {
-            a[`${options.root}${switchbank.instance}`] = {
+    function createMetadata(configuration) {
+        return (configuration.switchbanks.reduce((a, switchbank) => {
+            a[`${configuration.root}${switchbank.instance}`] = {
                 instance: switchbank.instance,
                 type: switchbank.type,
                 description: switchbank.description,
-                channelCount: switchbank.channelCount,
+                channelCount: switchbank.channels.length,
                 $source: `plugin:${plugin.id}`,
             };
             switchbank.channels.forEach((channel) => {
-                a[`${options.root}${switchbank.instance}.${channel.index}.state`] = {
+                a[channel.path] = {
                     description: `Binary ${switchbank.type} state (0 = OFF, 1 = ON)`,
                     type: switchbank.type,
                     shortName: `[${switchbank.instance},${channel.index}]`,
