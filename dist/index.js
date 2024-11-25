@@ -36,27 +36,33 @@ const PLUGIN_SCHEMA = {
                 "properties": {
                     "instance": {
                         "description": "Switchbank instance number",
-                        "type": "number", "default": 0, "title": "Switch bank instance"
+                        "title": "Switchbank instance number",
+                        "type": "number",
                     },
                     "type": {
                         "description": "Switchbank type",
-                        "type": "string", "default": "relay", "enum": ["relay", "switch"], "title": "Switch bank type"
+                        "title": "Switchbank type",
+                        "type": "string",
+                        "default": "relay",
+                        "enum": ["relay", "switch"],
                     },
                     "pgn": {
                         "description": "PGN used to update this switchbank",
-                        "type": "string"
+                        "title": "PGN used to control this switchbank",
+                        "type": "number",
+                        "default": 127502
                     },
                     "description": {
                         "description": "Text describing the module (serial no, intall location, etc)",
-                        "type": "string", "default": "", "title": "Switch bank description"
-                    },
-                    "numberOfChannels": {
-                        "description": "Number of channels supported by this switchbank",
-                        "type": "number"
+                        "title": "Switchbank description",
+                        "type": "string",
+                        "default": ""
                     },
                     "channels": {
+                        "description": "Array of switchbank channels",
                         "title": "Switchbank channels",
                         "type": "array",
+                        "default": [],
                         "items": {
                             "type": "object",
                             "properties": {
@@ -71,26 +77,14 @@ const PLUGIN_SCHEMA = {
                                     "default": ""
                                 }
                             },
-                            "required": ["index", "channelCount"],
-                            "default": { "description": "A switchbank channel" }
+                            "required": ["index"]
                         }
                     }
-                },
-                "default": {
-                    "type": "relay",
-                    "channelCount": 8,
-                    "description": "A relay switchbank",
-                    "PGN": "127502",
-                    "channels": []
-                },
+                }
             }
         }
     },
-    "required": ["switchbanks"],
-    "default": {
-        "root": "electrical.switches.bank.",
-        "switchbanks": []
-    }
+    "required": ["switchbanks"]
 };
 const PLUGIN_UISCHEMA = {};
 const DEFAULT_ROOT = "electrical.switches.bank.";
